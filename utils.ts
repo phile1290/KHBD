@@ -16,6 +16,7 @@ import {
     PageNumber,
     PageBreak,
     TableLayoutType,
+    TabStopType,
     convertMillimetersToTwip
 } from 'docx';
 import { LessonPlanResponse, Period, Activity } from './types';
@@ -373,11 +374,11 @@ export const cleanPrefix = (text: string | null | undefined): string => {
 /**
  * Căn chỉnh từng cặp hành động của Giáo viên và Học sinh 1:1 ngang hàng,
  * đồng thời tách các dòng hình ảnh minh họa thành dòng riêng ngay dưới ý lệnh GV
- * để Word ngắt trang sát mép 2.2cm và không làm lệch hàng các ý lệnh kế tiếp.
+ * và truyền nguyên vẹn ngữ cảnh ý lệnh GV phía trên (`precedingTeacher`) cho bộ vẽ hình ảnh.
  */
 export const alignContent = (teacherText: string, studentText: string) => {
     const rawTLines = cleanPrefix(teacherText || '')
-        .replace(/(\[Gợi ý hình ảnh:|Gợi ý hình ảnh:|\(Gợi ý hình ảnh:)/gi, '\n$1')
+        .replace(/(\[Gợi ý hình ảnh:|Gợi ý hình ảnh:|\(Gợi ý hình ảnh:|\[Hình ảnh minh họa:|Hình ảnh minh họa:)/gi, '\n$1')
         .split('\n')
         .map(l => l.trim())
         .filter(Boolean);
@@ -387,8 +388,9 @@ export const alignContent = (teacherText: string, studentText: string) => {
         .map(l => l.trim())
         .filter(Boolean);
 
-    const tGroups: Array<{ text: string; images: string[] }> = [];
+    const tGroups: Array<{ text: string; images: string[]; contextHistory: string }> = [];
     const leadingImages: string[] = [];
+    const recentTeacherLines: string[] = [];
 
     for (const line of rawTLines) {
         if (isImageHintLine(line)) {
@@ -399,16 +401,19 @@ export const alignContent = (teacherText: string, studentText: string) => {
                 leadingImages.push(cleanHint);
             }
         } else {
-            tGroups.push({ text: line, images: [] });
+            recentTeacherLines.push(line);
+            const contextWindow = recentTeacherLines.slice(-2).join(' ');
+            tGroups.push({ text: line, images: [], contextHistory: contextWindow });
         }
     }
 
-    const alignedRows: Array<{ teacher: string; student: string }> = [];
+    const alignedRows: Array<{ teacher: string; student: string; precedingTeacher?: string }> = [];
 
     for (const imgLine of leadingImages) {
         alignedRows.push({
             teacher: imgLine,
-            student: ''
+            student: '',
+            precedingTeacher: recentTeacherLines.slice(0, 2).join(' ')
         });
     }
 
@@ -419,20 +424,126 @@ export const alignContent = (teacherText: string, studentText: string) => {
         if (tItem || sLine) {
             alignedRows.push({
                 teacher: tItem ? tItem.text : '',
-                student: sLine
+                student: sLine,
+                precedingTeacher: tItem ? tItem.contextHistory : ''
             });
         }
         if (tItem && tItem.images.length > 0) {
             for (const imgLine of tItem.images) {
                 alignedRows.push({
                     teacher: imgLine,
-                    student: ''
+                    student: '',
+                    precedingTeacher: tItem.contextHistory || tItem.text
                 });
             }
         }
     }
 
     return alignedRows;
+};
+
+export const normalizeIntegrationDomainLabel = (rawDomain: string): string => {
+    const clean = (rawDomain || '')
+        .replace(/^[-–\*\s\[]+|[\]\s:–\-]+$/g, '')
+        .replace(/^tích\s*hợp\s*/i, '')
+        .trim();
+    const lower = clean.toLowerCase();
+
+    if (
+        !clean ||
+        lower.includes('gdkncds') ||
+        lower.includes('kncds') ||
+        lower.includes('công dân số')
+    ) {
+        return 'giáo dục kĩ năng công dân số';
+    }
+    if (lower === 'nls' || lower.includes('năng lực số')) {
+        return 'năng lực số';
+    }
+    if (lower === 'ai' || lower.includes('trí tuệ nhân tạo') || lower.includes('năng lực ai')) {
+        return 'trí tuệ nhân tạo (AI)';
+    }
+    if (lower === 'kns' || lower.includes('kỹ năng sống') || lower.includes('kĩ năng sống')) {
+        return 'kĩ năng sống';
+    }
+    return clean;
+};
+
+export const extractIntegrationPrefixFromObjectives = (
+    objectives?: string[] | null,
+    integrationNotes?: string
+): string => {
+    const combinedSources = [
+        ...(Array.isArray(objectives) ? objectives : []),
+        integrationNotes || ''
+    ].join('\n');
+
+    const lines = combinedSources.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    for (const line of lines) {
+        const match = line.match(/tích\s*hợp\s+([^:\-\–\]]+)[:\-\–\]]/i);
+        if (match && match[1]) {
+            const domain = normalizeIntegrationDomainLabel(match[1]);
+            return `Tích hợp ${domain}`;
+        }
+        if (/gdkncds|kncds|công\s*dân\s*số/i.test(line)) {
+            return 'Tích hợp giáo dục kĩ năng công dân số';
+        }
+        if (/\bnls\b|năng\s*lực\s*số/i.test(line)) {
+            return 'Tích hợp năng lực số';
+        }
+        if (/\bai\b|trí\s*tuệ\s*nhân\s*tạo/i.test(line)) {
+            return 'Tích hợp trí tuệ nhân tạo (AI)';
+        }
+    }
+
+    return 'Tích hợp giáo dục kĩ năng công dân số';
+};
+
+export const isActivityIntegrationLine = (line: string): boolean => {
+    const trimmed = (line || '').trim();
+    return /^[-–\*\s]*(\[?\s*Tích\s*hợp\b)/i.test(trimmed);
+};
+
+export const formatActivityIntegrationLine = (
+    rawLine: string,
+    defaultPrefix: string = 'Tích hợp giáo dục kĩ năng công dân số'
+): string => {
+    let text = (rawLine || '').replace(/\*\*/g, '').trim();
+    text = text.replace(/^[-–\*\s]+/, '').trim();
+
+    let domainPrefix = defaultPrefix || 'Tích hợp giáo dục kĩ năng công dân số';
+    let contentPart = text;
+
+    // Trường hợp 1: [Tích hợp ...]: Nội dung  hoặc  [Tích hợp]: Nội dung
+    const bracketMatch = text.match(/^\[?\s*Tích\s*hợp([^\]:]*)\]?\s*[:\-–]\s*(.*)$/i);
+    if (bracketMatch) {
+        const rawDomain = (bracketMatch[1] || '').trim();
+        contentPart = (bracketMatch[2] || '').trim();
+        if (rawDomain) {
+            domainPrefix = `Tích hợp ${normalizeIntegrationDomainLabel(rawDomain)}`;
+        }
+    } else {
+        // Trường hợp 2: Tích hợp giáo dục kĩ năng công dân số: Nội dung
+        const plainMatch = text.match(/^Tích\s*hợp\s*[:\-–]?\s*(.*)$/i);
+        if (plainMatch) {
+            contentPart = (plainMatch[1] || '').trim();
+        }
+    }
+
+    contentPart = contentPart
+        .replace(/^[-–\*\s]+/, '')
+        .replace(/^(Giáo\s*viên|GV|Học\s*sinh|HS)\s*[:\-\–]?\s*/i, '')
+        .trim();
+
+    if (contentPart.length > 0) {
+        contentPart = contentPart.charAt(0).toUpperCase() + contentPart.slice(1);
+    }
+
+    if (!domainPrefix.toLowerCase().startsWith('tích hợp')) {
+        domainPrefix = `Tích hợp ${domainPrefix}`;
+    }
+
+    return `- ${domainPrefix}: ${contentPart}`;
 };
 
 export interface FormattedObjective {
@@ -455,35 +566,46 @@ export const formatObjectives = (objectives: string[] | undefined | null): Forma
 
         if (!line) return;
 
-        const isIntegration = /tích\s*hợp|\bkns\b|kỹ\s*năng\s*sống|\bai\b|trí\s*tuệ\s*nhân\s*tạo|năng\s*lực\s*số|\bnls\b|\bstem\b|gdqpan/i.test(line);
+        const isIntegration =
+            /tích\s*hợp|\bgdkncds\b|\bkncds\b|công\s*dân\s*số|\bkns\b|kỹ\s*năng\s*sống|kĩ\s*năng\s*sống|\bai\b|trí\s*tuệ\s*nhân\s*tạo|năng\s*lực\s*số|\bnls\b|\bstem\b|gdqpan|\bth\s*bài\s*\d+/i.test(line);
 
         if (isIntegration) {
             let text = line.replace(/^[1-9]\s*[\.\:\)\-–]\s*/, '');
             text = text.replace(/^[-–\*\s]+/, '').trim();
-            text = text.replace(/^tích\s*hợp\s*[:\-\.]\s*/i, '');
-            text = text.replace(/^[-–\*\s]+/, '').trim();
 
-            if (/^(kns|kỹ\s*năng\s*sống)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
-                text = text.replace(/^(kns|kỹ\s*năng\s*sống)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
-                text = `- Tích hợp KNS: ${text.trim()}`;
-            } else if (/^(ai|trí\s*tuệ\s*nhân\s*tạo|năng\s*lực\s*ai)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
-                text = text.replace(/^(ai|trí\s*tuệ\s*nhân\s*tạo|năng\s*lực\s*ai)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
-                text = `- Tích hợp AI: ${text.trim()}`;
-            } else if (/^(năng\s*lực\s*số|nls)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
-                text = text.replace(/^(năng\s*lực\s*số|nls)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
-                text = `- Tích hợp Năng lực số: ${text.trim()}`;
+            if (/^(gdkncds|kncds|kỹ\s*năng\s*công\s*dân\s*số|kĩ\s*năng\s*công\s*dân\s*số|giáo\s*dục\s*k[ỹĩ]\s*năng\s*công\s*dân\s*số)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
+                text = text.replace(/^(gdkncds|kncds|kỹ\s*năng\s*công\s*dân\s*số|kĩ\s*năng\s*công\s*dân\s*số|giáo\s*dục\s*k[ỹĩ]\s*năng\s*công\s*dân\s*số)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
+                text = `- Tích hợp giáo dục kĩ năng công dân số: ${text.trim()}`;
             } else if (/^tích\s*hợp\s+([^:]+)[:\-\–]\s*(.*)$/i.test(text)) {
                 const match = text.match(/^tích\s*hợp\s+([^:]+)[:\-\–]\s*(.*)$/i);
                 if (match) {
-                    const domain = match[1].trim();
+                    const domain = normalizeIntegrationDomainLabel(match[1].trim());
                     const content = match[2].trim();
                     text = `- Tích hợp ${domain}: ${content}`;
                 } else {
-                    text = `- Tích hợp: ${text}`;
+                    text = `- Tích hợp giáo dục kĩ năng công dân số: ${text}`;
                 }
             } else {
-                text = text.replace(/^tích\s*hợp\s*[:\-\–]?\s*/i, '');
-                text = `- Tích hợp: ${text.trim()}`;
+                text = text.replace(/^tích\s*hợp\s*[:\-\–\.]?\s*/i, '').trim();
+                if (/^(gdkncds|kncds|kỹ\s*năng\s*công\s*dân\s*số|kĩ\s*năng\s*công\s*dân\s*số)\s*[:\-\–\.]?\s*/i.test(text)) {
+                    text = text.replace(/^(gdkncds|kncds|kỹ\s*năng\s*công\s*dân\s*số|kĩ\s*năng\s*công\s*dân\s*số)\s*[:\-\–\.]?\s*/i, '').trim();
+                    text = `- Tích hợp giáo dục kĩ năng công dân số: ${text}`;
+                } else if (/^(kns|kỹ\s*năng\s*sống|kĩ\s*năng\s*sống)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
+                    text = text.replace(/^(kns|kỹ\s*năng\s*sống|kĩ\s*năng\s*sống)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
+                    text = `- Tích hợp kĩ năng sống: ${text.trim()}`;
+                } else if (/^(ai|trí\s*tuệ\s*nhân\s*tạo|năng\s*lực\s*ai)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
+                    text = text.replace(/^(ai|trí\s*tuệ\s*nhân\s*tạo|năng\s*lực\s*ai)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
+                    text = `- Tích hợp trí tuệ nhân tạo (AI): ${text.trim()}`;
+                } else if (/^(năng\s*lực\s*số|nls)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i.test(text)) {
+                    text = text.replace(/^(năng\s*lực\s*số|nls)(\s*\([^)]*\))?\s*[:\-\–\.]\s*/i, '');
+                    text = `- Tích hợp năng lực số: ${text.trim()}`;
+                } else if (result.length > 0 && result[result.length - 1].isIntegration) {
+                    // Dòng nối tiếp của mục tiêu tích hợp phía trên -> gộp chung vào dòng tích hợp để đồng nhất định dạng
+                    result[result.length - 1].text = `${result[result.length - 1].text.replace(/[\.\s]+$/, '')}; ${text}`;
+                    return;
+                } else {
+                    text = `- Tích hợp giáo dục kĩ năng công dân số: ${text.trim()}`;
+                }
             }
 
             result.push({
@@ -608,7 +730,6 @@ export const paginateActivityRowsForWordPages = <T extends {
     const titleAndSectionHeadersPt = 92 + 24 + 30;
     const introHeightOnPage1Pt = titleAndSectionHeadersPt + objHeightPt + matHeightPt;
 
-    // Khổ A4 cao 842pt, lề trên 2.0cm (~57pt), lề dưới đến đáy khung bảng 2.2cm (~62pt) -> vùng thân trang ~723pt
     const SAFE_PAGE_TOTAL_PT = 675;
     const page1MaxTableBodyPt = Math.max(240, SAFE_PAGE_TOTAL_PT - introHeightOnPage1Pt);
     const subsequentPageMaxTableBodyPt = SAFE_PAGE_TOTAL_PT - 32;
@@ -643,14 +764,17 @@ export const paginateActivityRowsForWordPages = <T extends {
 
 /**
  * Chuyển đổi văn bản trong ô Hoạt động của GV / HS thành danh sách Paragraph chuẩn OpenXML (.docx)
- * - Thay thế hoàn toàn [Gợi ý hình ảnh: ...] bằng hình ảnh thực tế (ImageRun) nhúng thẳng vào tài liệu Word.
- * - Tô màu xanh cổ vịt in nghiêng đậm cho [Tích hợp]: ...
+ * - Thay thế hoàn toàn [Gợi ý hình ảnh: ...] bằng hình ảnh thực tế (ImageRun) khớp 100% với nội dung GV ở trên (`precedingContext`).
+ * - Chuẩn hóa dòng tích hợp theo đúng tên miền trên Yêu cầu cần đạt (VD: "- Tích hợp giáo dục kĩ năng công dân số: ...")
+ *   và định dạng in nghiêng (italics: true), tuyệt đối không in đậm (bold: false).
  */
 const buildCellParagraphsFromText = (
     rawText: string,
     extraHeaderLines: string[] = [],
     blankSpacerCount: number = 0,
-    lessonTitle: string = ''
+    lessonTitle: string = '',
+    precedingContext: string = '',
+    integrationPrefix: string = 'Tích hợp giáo dục kĩ năng công dân số'
 ): Paragraph[] => {
     const paragraphs: Paragraph[] = [];
 
@@ -659,7 +783,8 @@ const buildCellParagraphsFromText = (
         paragraphs.push(
             new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
-                spacing: { before: 15, after: 25, line: 264 },
+                widowControl: false,
+                spacing: { before: 10, after: 15, line: 260 },
                 children: [
                     new TextRun({
                         text: headerLine,
@@ -677,7 +802,8 @@ const buildCellParagraphsFromText = (
         paragraphs.push(
             new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
-                spacing: { before: 15, after: 25, line: 264 },
+                widowControl: false,
+                spacing: { before: 10, after: 15, line: 260 },
                 children: [
                     new TextRun({
                         text: "",
@@ -697,28 +823,32 @@ const buildCellParagraphsFromText = (
     if (lines.length === 0 && paragraphs.length === 0) {
         paragraphs.push(
             new Paragraph({
-                spacing: { before: 10, after: 20, line: 264 },
+                widowControl: false,
+                spacing: { before: 8, after: 12, line: 260 },
                 children: [new TextRun({ text: "", font: "Times New Roman", size: 26 })]
             })
         );
         return paragraphs;
     }
 
+    let runningContext = precedingContext || '';
+
     for (const line of lines) {
         if (isImageHintLine(line)) {
-            const dataUrl = renderPedagogicalIllustrationDataUrl(line, lessonTitle);
+            const dataUrl = renderPedagogicalIllustrationDataUrl(line, lessonTitle, runningContext);
             if (dataUrl) {
                 const imgBytes = dataUrlToUint8Array(dataUrl);
                 paragraphs.push(
                     new Paragraph({
                         alignment: AlignmentType.CENTER,
-                        spacing: { before: 40, after: 40 },
+                        widowControl: false,
+                        spacing: { before: 25, after: 25 },
                         children: [
                             new ImageRun({
                                 data: imgBytes,
                                 transformation: {
-                                    width: 260,
-                                    height: 144
+                                    width: 240,
+                                    height: 128
                                 },
                                 type: "png"
                             })
@@ -726,28 +856,32 @@ const buildCellParagraphsFromText = (
                     })
                 );
             }
-        } else if (/^(\[Tích hợp\]|-\s*Tích hợp)/i.test(line)) {
+        } else if (isActivityIntegrationLine(line)) {
+            const formattedIntegration = formatActivityIntegrationLine(line, integrationPrefix);
             paragraphs.push(
                 new Paragraph({
                     alignment: AlignmentType.JUSTIFIED,
-                    spacing: { before: 15, after: 25, line: 264 },
+                    widowControl: false,
+                    spacing: { before: 10, after: 15, line: 260 },
                     children: [
                         new TextRun({
-                            text: line,
+                            text: formattedIntegration,
                             font: "Times New Roman",
                             size: 26,
-                            bold: true,
+                            bold: false,
                             italics: true,
-                            color: "0D9488"
+                            color: "000000"
                         })
                     ]
                 })
             );
         } else {
+            runningContext = `${runningContext} ${line}`.trim();
             paragraphs.push(
                 new Paragraph({
                     alignment: AlignmentType.JUSTIFIED,
-                    spacing: { before: 15, after: 25, line: 264 },
+                    widowControl: false,
+                    spacing: { before: 10, after: 15, line: 260 },
                     children: [
                         new TextRun({
                             text: line,
@@ -768,7 +902,7 @@ const buildCellParagraphsFromText = (
  * Tạo file Word chuẩn OpenXML (.docx) cho Kế hoạch bài dạy (KHBD)
  * - Mở trực tiếp ở chế độ Print Layout trong Microsoft Word.
  * - Đóng khung đường kẻ ngang ở CUỐI MỖI TRANG WORD trong bảng "III. CÁC HOẠT ĐỘNG DẠY HỌC"
- *   với khoảng cách từ mép dưới trang giấy đến đường kẻ khung cuối trang đúng chuẩn 2.2cm (22mm).
+ *   với khoảng cách sát mép dưới trang giấy đúng chuẩn 0.5cm (5mm).
  * - Thay thế toàn bộ gợi ý hình ảnh bằng hình ảnh minh họa thực tế nhúng trong bảng.
  * - Hiển thị chính xác tuyệt đối số thứ tự tiết học sau tên bài dạy (VD: (TIẾT 2) đối với Tiết 2/2).
  */
@@ -886,6 +1020,10 @@ export const generateLessonPlanDocxBlob = async (
         );
 
         const formattedObjs = formatObjectives(period.objectives);
+        const integrationPrefix = extractIntegrationPrefixFromObjectives(
+            period.objectives,
+            inputData?.integrationNotes
+        );
         formattedObjs.forEach(obj => {
             children.push(
                 new Paragraph({
@@ -896,6 +1034,7 @@ export const generateLessonPlanDocxBlob = async (
                             text: obj.text,
                             font: "Times New Roman",
                             size: 26,
+                            bold: false,
                             italics: obj.isIntegration
                         })
                     ]
@@ -1055,7 +1194,7 @@ export const generateLessonPlanDocxBlob = async (
         });
 
         // Các dòng nội dung của 4 hoạt động dạy học:
-        // Không đặt cantSplit trên bodyRows để Word dàn trang sát xuống đúng lề dưới 2.2cm (22mm) trước khi vẽ đường kẻ ngang đóng khung cuối trang.
+        // Không gắn thuộc tính cantSplit vào TableRow và bật widowControl: false để Word tự động ngắt từng dòng sát xuống mốc 0.5cm (5mm) từ mép dưới trang giấy.
         const bodyRows: TableRow[] = [];
         const activities = period.activities || [];
 
@@ -1070,19 +1209,18 @@ export const generateLessonPlanDocxBlob = async (
                 gvHeaders.push(formattedTopic);
             }
 
-            // Dòng tiêu đề của từng Hoạt động tách riêng để gọn nhẹ, giúp các dòng ý lệnh bên dưới tràn sát mốc 2.2cm cuối trang
             bodyRows.push(
                 new TableRow({
-                    cantSplit: false,
                     children: [
                         new TableCell({
                             width: { size: 10, type: WidthType.PERCENTAGE },
                             verticalAlign: VerticalAlign.TOP,
-                            margins: { top: 35, bottom: 20, left: 60, right: 60 },
+                            margins: { top: 20, bottom: 15, left: 60, right: 60 },
                             children: [
                                 new Paragraph({
                                     alignment: AlignmentType.CENTER,
-                                    spacing: { before: 15, after: 20, line: 264 },
+                                    widowControl: false,
+                                    spacing: { before: 10, after: 15, line: 260 },
                                     children: [
                                         new TextRun({
                                             text: timeText,
@@ -1097,16 +1235,17 @@ export const generateLessonPlanDocxBlob = async (
                         new TableCell({
                             width: { size: 52, type: WidthType.PERCENTAGE },
                             verticalAlign: VerticalAlign.TOP,
-                            margins: { top: 35, bottom: 20, left: 100, right: 100 },
-                            children: buildCellParagraphsFromText('', gvHeaders, 0, lessonTitle)
+                            margins: { top: 20, bottom: 15, left: 100, right: 100 },
+                            children: buildCellParagraphsFromText('', gvHeaders, 0, lessonTitle, '', integrationPrefix)
                         }),
                         new TableCell({
                             width: { size: 38, type: WidthType.PERCENTAGE },
                             verticalAlign: VerticalAlign.TOP,
-                            margins: { top: 35, bottom: 20, left: 100, right: 100 },
+                            margins: { top: 20, bottom: 15, left: 100, right: 100 },
                             children: [
                                 new Paragraph({
-                                    spacing: { before: 15, after: 20, line: 264 },
+                                    widowControl: false,
+                                    spacing: { before: 10, after: 15, line: 260 },
                                     children: [new TextRun({ text: "", font: "Times New Roman", size: 26 })]
                                 })
                             ]
@@ -1121,16 +1260,16 @@ export const generateLessonPlanDocxBlob = async (
                 alignedSubRows.forEach(subRow => {
                     bodyRows.push(
                         new TableRow({
-                            cantSplit: false,
                             children: [
                                 new TableCell({
                                     width: { size: 10, type: WidthType.PERCENTAGE },
                                     verticalAlign: VerticalAlign.TOP,
-                                    margins: { top: 25, bottom: 25, left: 60, right: 60 },
+                                    margins: { top: 15, bottom: 15, left: 60, right: 60 },
                                     children: [
                                         new Paragraph({
                                             alignment: AlignmentType.CENTER,
-                                            spacing: { before: 10, after: 20, line: 264 },
+                                            widowControl: false,
+                                            spacing: { before: 8, after: 12, line: 260 },
                                             children: [
                                                 new TextRun({
                                                     text: "",
@@ -1144,14 +1283,28 @@ export const generateLessonPlanDocxBlob = async (
                                 new TableCell({
                                     width: { size: 52, type: WidthType.PERCENTAGE },
                                     verticalAlign: VerticalAlign.TOP,
-                                    margins: { top: 25, bottom: 25, left: 100, right: 100 },
-                                    children: buildCellParagraphsFromText(subRow.teacher, [], 0, lessonTitle)
+                                    margins: { top: 15, bottom: 15, left: 100, right: 100 },
+                                    children: buildCellParagraphsFromText(
+                                        subRow.teacher,
+                                        [],
+                                        0,
+                                        lessonTitle,
+                                        subRow.precedingTeacher || '',
+                                        integrationPrefix
+                                    )
                                 }),
                                 new TableCell({
                                     width: { size: 38, type: WidthType.PERCENTAGE },
                                     verticalAlign: VerticalAlign.TOP,
-                                    margins: { top: 25, bottom: 25, left: 100, right: 100 },
-                                    children: buildCellParagraphsFromText(subRow.student, [], 0, lessonTitle)
+                                    margins: { top: 15, bottom: 15, left: 100, right: 100 },
+                                    children: buildCellParagraphsFromText(
+                                        subRow.student,
+                                        [],
+                                        0,
+                                        lessonTitle,
+                                        '',
+                                        integrationPrefix
+                                    )
                                 })
                             ]
                         })
@@ -1220,62 +1373,34 @@ export const generateLessonPlanDocxBlob = async (
         );
     });
 
-    // Bảng Footer ở cuối mỗi trang Word (gọn gàng ở vị trí 1.0cm từ mép dưới, đảm bảo vùng bảng chính kết thúc đúng 2.2cm từ mép dưới trang giấy)
-    const footerTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: {
-            top: { style: BorderStyle.SINGLE, size: 8, color: "000000" },
-            bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
-            left: { style: BorderStyle.NONE, size: 0, color: "auto" },
-            right: { style: BorderStyle.NONE, size: 0, color: "auto" },
-            insideHorizontal: { style: BorderStyle.NONE, size: 0, color: "auto" },
-            insideVertical: { style: BorderStyle.NONE, size: 0, color: "auto" }
-        },
-        rows: [
-            new TableRow({
-                children: [
-                    new TableCell({
-                        width: { size: 50, type: WidthType.PERCENTAGE },
-                        margins: { top: 30, bottom: 0, left: 0, right: 0 },
-                        children: [
-                            new Paragraph({
-                                alignment: AlignmentType.LEFT,
-                                spacing: { before: 0, after: 0, line: 240 },
-                                children: [
-                                    new TextRun({
-                                        text: displaySchool,
-                                        font: "Times New Roman",
-                                        size: 22, // 11pt
-                                        italics: true,
-                                        color: "E11D48"
-                                    })
-                                ]
-                            })
-                        ]
-                    }),
-                    new TableCell({
-                        width: { size: 50, type: WidthType.PERCENTAGE },
-                        margins: { top: 30, bottom: 0, left: 0, right: 0 },
-                        children: [
-                            new Paragraph({
-                                alignment: AlignmentType.RIGHT,
-                                spacing: { before: 0, after: 0, line: 240 },
-                                children: [
-                                    new TextRun({
-                                        text: displayTeacher,
-                                        font: "Times New Roman",
-                                        size: 22, // 11pt
-                                        italics: true,
-                                        color: "E11D48"
-                                    })
-                                ]
-                            })
-                        ]
-                    })
-                ]
-            })
-        ]
-    });
+    // Dòng Footer 1 dòng duy nhất ở sát mép dưới (không dùng Table trong Footer để tránh Word tự chèn thêm đoạn trống bên dưới làm đẩy khung bảng lên cao)
+    const createFooterParagraph = () =>
+        new Paragraph({
+            alignment: AlignmentType.LEFT,
+            spacing: { before: 0, after: 0, line: 200 },
+            tabStops: [
+                {
+                    type: TabStopType.RIGHT,
+                    position: convertMillimetersToTwip(165)
+                }
+            ],
+            children: [
+                new TextRun({
+                    text: displaySchool,
+                    font: "Times New Roman",
+                    size: 20, // 10pt gọn gàng
+                    italics: true,
+                    color: "E11D48"
+                }),
+                new TextRun({
+                    text: `\t${displayTeacher}`,
+                    font: "Times New Roman",
+                    size: 20, // 10pt gọn gàng
+                    italics: true,
+                    color: "E11D48"
+                })
+            ]
+        });
 
     const doc = new Document({
         sections: [
@@ -1289,11 +1414,11 @@ export const generateLessonPlanDocxBlob = async (
                         },
                         margin: {
                             top: convertMillimetersToTwip(20),
-                            bottom: convertMillimetersToTwip(22), // Chính xác 2.2cm từ mép dưới đến đường kẻ khung cuối trang của bảng
+                            bottom: convertMillimetersToTwip(5), // Chính xác 0.5cm (5mm) từ mép dưới đến đường kẻ đóng khung cuối mỗi trang Word
                             left: convertMillimetersToTwip(30),
                             right: convertMillimetersToTwip(15),
                             header: convertMillimetersToTwip(10),
-                            footer: convertMillimetersToTwip(10)
+                            footer: convertMillimetersToTwip(1.5)
                         }
                     }
                 },
@@ -1319,10 +1444,10 @@ export const generateLessonPlanDocxBlob = async (
                 },
                 footers: {
                     first: new Footer({
-                        children: [footerTable]
+                        children: [createFooterParagraph()]
                     }),
                     default: new Footer({
-                        children: [footerTable]
+                        children: [createFooterParagraph()]
                     })
                 },
                 children

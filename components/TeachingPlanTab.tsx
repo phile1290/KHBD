@@ -457,22 +457,6 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
 
     return (
         <div className="space-y-6">
-            {/* Header tính năng */}
-            <div className="bg-gradient-to-r from-teal-800 via-teal-900 to-slate-900 text-white p-5 rounded-2xl shadow-lg border border-teal-700/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                        <span className="p-2 bg-teal-500/20 rounded-lg backdrop-blur-xs border border-teal-400/30">
-                            <Calendar size={22} className="text-teal-300" />
-                        </span>
-                        <h2 className="text-xl font-bold tracking-wide uppercase">
-                            KẾ HOẠCH DẠY HỌC (THEO NGHỊ ĐỊNH 30/2020/NĐ-CP)
-                        </h2>
-                    </div>
-                    <p className="text-xs text-teal-100 max-w-3xl leading-relaxed">
-                        Tham chiếu linh động theo <b>các file Phân phối chương trình</b> và <b>Mẫu Kế hoạch dạy học</b> do Thầy/Cô cung cấp. Hỗ trợ chọn <b>Tất cả các tuần</b> để soạn trọn bộ kế hoạch dạy học của toàn bộ các tuần hoặc soạn riêng từng tuần chuẩn xác <b>TÊN BÀI DẠY(T1) / TÊN BÀI DẠY(T2)</b>.
-                    </p>
-                </div>
-            </div>
 
             {/* Layout 2 cột: Cột trái Nhập liệu từng bước - Cột phải Danh sách các tuần & Bảng xem trước */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1122,9 +1106,6 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
                                                     </button>
                                                 </div>
                                             )}
-                                        </div>
-                                        <div className="text-[11px] text-gray-600">
-                                            Chuẩn thể thức Nghị định 30/2020/NĐ-CP • Định lề: Trái 30mm, Trên/Dưới 20mm, Phải 15mm
                                         </div>
                                     </div>
 

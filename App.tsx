@@ -432,10 +432,10 @@ const App: React.FC = () => {
                         </div>
                         <div>
                             <h1 className="text-lg md:text-xl font-bold text-gray-800 uppercase tracking-wide">
-                                Kế hoạch bài dạy theo Phân phối chương trình
+                                KẾ HOẠCH DẠY HỌC VÀ KẾ HOẠCH BÀI DẠY THMA
                             </h1>
                             <p className="text-xs text-teal-700 font-medium">
-                                Ứng dụng phát triển bởi thầy giáo Lê Văn Phi • Tự động soạn và tải về riêng biệt từng tuần theo đúng phân phối chương trình tải lên
+                                Ứng dụng phát triển bởi thầy giáo Lê Văn Phi
                             </p>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { LessonPlanResponse, Period } from '../types';
-import { formatActivityName, formatTopicName, alignContent, formatObjectives, formatLessonTitleWithPeriod, paginateActivityRowsForWordPages, ensureFourActivitiesInAllPeriods, extractExplicitPeriodNumber } from '../utils';
+import { formatActivityName, formatTopicName, alignContent, formatObjectives, formatLessonTitleWithPeriod, paginateActivityRowsForWordPages, ensureFourActivitiesInAllPeriods, extractExplicitPeriodNumber, extractIntegrationPrefixFromObjectives } from '../utils';
 import FormattedText from './FormattedText';
 
 interface Props {
@@ -105,6 +105,10 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
         };
 
         const formattedObjs = formatObjectives(period.objectives);
+        const integrationPrefix = extractIntegrationPrefixFromObjectives(
+            period.objectives,
+            inputData?.integrationNotes
+        );
         const teacherMat = (period.materials?.teacher || '').replace(/\*\*/g, '').replace(/^[-–\*\s]+/, '');
         const studentMat = (period.materials?.student || '').replace(/\*\*/g, '').replace(/^[-–\*\s]+/, '');
 
@@ -139,9 +143,10 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
                         {formattedObjs.map((obj, i) => (
                             <div key={i} style={{
                                 marginBottom: '3pt',
-                                fontStyle: obj.isIntegration ? 'italic' : 'normal'
+                                fontStyle: obj.isIntegration ? 'italic' : 'normal',
+                                fontWeight: 'normal'
                             }}>
-                                {obj.isIntegration ? <i>{obj.text}</i> : obj.text}
+                                {obj.isIntegration ? <i style={{ fontWeight: 'normal' }}>{obj.text}</i> : obj.text}
                             </div>
                         ))}
                     </div>
@@ -174,6 +179,7 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
                                 formattedTopic?: string;
                                 teacher: string;
                                 student: string;
+                                precedingTeacher?: string;
                             }> = [];
 
                             (period.activities || []).forEach((act, actIndex) => {
@@ -196,7 +202,8 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
                                             topic: act.topic,
                                             formattedTopic,
                                             teacher: subRow.teacher,
-                                            student: subRow.student
+                                            student: subRow.student,
+                                            precedingTeacher: subRow.precedingTeacher
                                         });
                                     });
                                 });
@@ -250,7 +257,12 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
                                                                         )}
                                                                     </>
                                                                 )}
-                                                                <FormattedText text={r.teacher} lessonTitle={lessonTitle} />
+                                                                <FormattedText
+                                                                    text={r.teacher}
+                                                                    lessonTitle={lessonTitle}
+                                                                    precedingText={r.precedingTeacher || ''}
+                                                                    integrationPrefix={integrationPrefix}
+                                                                />
                                                             </td>
                                                             <td style={hsStyle}>
                                                                 {r.isFirstRowOfActivity && (
@@ -261,7 +273,11 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
                                                                         )}
                                                                     </>
                                                                 )}
-                                                                <FormattedText text={r.student} lessonTitle={lessonTitle} />
+                                                                <FormattedText
+                                                                    text={r.student}
+                                                                    lessonTitle={lessonTitle}
+                                                                    integrationPrefix={integrationPrefix}
+                                                                />
                                                             </td>
                                                         </tr>
                                                     );

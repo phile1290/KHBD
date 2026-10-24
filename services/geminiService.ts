@@ -9,6 +9,7 @@ import {
     extractExplicitPeriodNumber,
     formatLessonTitleWithPeriod
 } from "../utils";
+import { pregenerateLessonImagesWithAI } from "../utils/lessonImageGenerator";
 
 const LESSON_PLAN_RESPONSE_SCHEMA = {
     type: Type.OBJECT,
@@ -132,17 +133,24 @@ export const generateLessonPlan = async ({
   ${integrationComponents.map(c => `+ ${c}`).join('\n  ')}
 
   QUY TẮC THÔNG MINH VÀ CHÍNH XÁC TUYỆT ĐỐI THEO CHỈ ĐẠO CỦA GIÁO VIÊN:
-  + NỘI DUNG CỘT GHI CHÚ PPCT LÀ MỆNH LỆNH SƯ PHẠM CAO NHẤT. Nếu ghi chú PPCT ghi "Tích hợp kỹ năng công dân số", kế hoạch bài dạy CHỈ ĐƯỢC TÍCH HỢP KỸ NĂNG CÔNG DÂN SỐ, TUYỆT ĐỐI KHÔNG tự động chèn AI hay Năng lực số nếu ghi chú không yêu cầu.
-  + MỤC YÊU CẦU CẦN ĐẠT (objectives):
+  + BẢN CHẤT & TÍNH LOGIC CỦA NỘI DUNG TÍCH HỢP (TUYỆT ĐỐI KHÔNG NHẦM LẪN VỚI KIẾN THỨC GỐC TRONG SGK):
+    * Nội dung tích hợp là những kiến thức mở rộng, có tính thực tiễn và tính ứng dụng cao mà trong bài học gốc của sách giáo khoa chưa đề cập tới, được lồng ghép từ khung năng lực bổ trợ (theo ghi chú "${rawNotes}" hoặc Tài liệu tham khảo) VÀO trong bài học.
+    * CẤM TUYỆT ĐỐI lấy nội dung kiến thức vốn đã có sẵn trong bài học SGK để cho là "Tích hợp"!
+    * Nội dung tích hợp phải có sự liên kết mạch lạc, xuyên suốt và hợp lý từ phần "I. YÊU CẦU CẦN ĐẠT" xuống đến các "III. CÁC HOẠT ĐỘNG DẠY HỌC" cụ thể, giúp mở rộng tư duy thực tiễn cho học sinh dựa trên nền tảng kiến thức của bài học chính, tránh đưa thông tin tích hợp khiên cưỡng, chắp vá.
+    * Toàn bộ nội dung mang tính chất "Tích hợp" được định dạng in nghiêng và TUYỆT ĐỐI KHÔNG IN ĐẬM (không dùng ký tự **).
+  + MỤC I. YÊU CẦU CẦN ĐẠT (objectives):
     * KHÔNG dùng số thứ tự 1, 2, 3, 4. KHÔNG dùng nhãn "kiến thức", "năng lực", "phẩm chất". Dùng thuần túy gạch đầu dòng (- ).
-    * Dòng tích hợp: "- Tích hợp [Nội dung theo ghi chú '${rawNotes}']: [Nội dung cụ thể gắn liền với bài học Lớp ${inputData.grade}, Bài ${inputData.lessonName}]"
-  + CÁC HOẠT ĐỘNG DẠY HỌC:
-    * Chỉ tích hợp đúng nội dung có trong ghi chú "${rawNotes}".
-    * Ghi rõ cú pháp [Tích hợp]: - ... ở cả hoạt động Giáo viên và Học sinh, liên kết trực tiếp với bài học thực tế.`;
+    * Dòng tích hợp BẮT BUỘC ghi rõ tên miền tích hợp (nếu ghi chú là GDKNCDS / kỹ năng công dân số thì ghi chuẩn là "Tích hợp giáo dục kĩ năng công dân số"):
+      "- Tích hợp giáo dục kĩ năng công dân số: [Nội dung kiến thức/kĩ năng mở rộng thực tiễn được lồng ghép vào bài học]" (hoặc "- Tích hợp [Tên miền theo ghi chú '${rawNotes}']: [Nội dung tích hợp cụ thể]").
+  + MỤC III. CÁC HOẠT ĐỘNG DẠY HỌC (activities):
+    * CẤM TUYỆT ĐỐI chỉ ghi cụt lủn "[Tích hợp]: - ...".
+    * BẮT BUỘC phải ghi đầy đủ tên lĩnh vực tích hợp GIỐNG HỆT NHƯ TRÊN YÊU CẦU CẦN ĐẠT, bắt đầu bằng dấu gạch ngang "- ":
+      "- Tích hợp giáo dục kĩ năng công dân số: [Liệt kê rõ ràng, cụ thể nội dung tích hợp mở rộng thực hiện trong hoạt động đó, liên kết chặt chẽ với Yêu cầu cần đạt]" (hoặc tên lĩnh vực tích hợp tương ứng trên Yêu cầu cần đạt).
+    * Trong hoạt động đó tích hợp nội dung gì thì liệt kê trực tiếp, rõ ràng nội dung đó ở cả cột Giáo viên và cột Học sinh (định dạng in nghiêng, tuyệt đối không in đậm).`;
     } else {
         integrationInstruction = `- TUẦN NÀY KHÔNG CÓ GHI CHÚ TÍCH HỢP TRONG PHÂN PHỐI CHƯƠNG TRÌNH:
   + NGUYÊN TẮC SƯ PHẠM TUYỆT ĐỐI: Dù ở giao diện có tích chọn AI hay Năng lực số, nhưng bài này trong PPCT KHÔNG CÓ GHI CHÚ thì TUYỆT ĐỐI KHÔNG TÍCH HỢP.
-  + TUYỆT ĐỐI KHÔNG xuất hiện bất kỳ thẻ [Tích hợp] nào trong toàn bộ 4 hoạt động của bài học.
+  + TUYỆT ĐỐI KHÔNG xuất hiện bất kỳ dòng Tích hợp nào trong toàn bộ 4 hoạt động của bài học.
   + TRONG MỤC YÊU CẦU CẦN ĐẠT (objectives): CHỈ CÓ các gạch đầu dòng (- ) về kiến thức, kỹ năng, năng lực, phẩm chất chuẩn của bài học SGK. TUYỆT ĐỐI KHÔNG CÓ dòng "- Tích hợp...".
   + Bài dạy này là bài học chuẩn kiến thức, kỹ năng theo chương trình.`;
     }
@@ -213,15 +221,15 @@ export const generateLessonPlan = async ({
         ${contentInstruction}
         **YÊU CẦU TÍCH HỢP:**
         ${integrationInstruction}
-        - Nếu có Tài liệu tham khảo, hãy dùng nó.
+        - Nếu có Tài liệu tham khảo, hãy dùng nó làm nguồn đối chiếu chuẩn xác cho nội dung tích hợp (không lấy kiến thức sẵn có trong bài học SGK làm nội dung tích hợp).
         
         **NHẮC LẠI YÊU CẦU BẮT BUỘC:**
         1. **CẤU TRÚC BẮT BUỘC:** Đủ 4 hoạt động dạy học (1. Hoạt động mở đầu, 2. Hoạt động hình thành kiến thức mới, 3. Hoạt động luyện tập, thực hành, 4. Hoạt động vận dụng, trải nghiệm) cho tiết học. Tuyệt đối không bỏ sót bất kỳ hoạt động nào.
-        2. **YÊU CẦU CẦN ĐẠT (QUY CHUẨN MỚI BẮT BUỘC):**
+        2. **YÊU CẦU CẦN ĐẠT & TÍCH HỢP (QUY CHUẨN BẮT BUỘC):**
            - TUYỆT ĐỐI KHÔNG sử dụng đánh số 1, 2, 3, 4.
            - TUYỆT ĐỐI KHÔNG ghi "kiến thức", "năng lực", "phẩm chất", "Kiến thức, kỹ năng:", "Về năng lực:",...
            - Thể hiện thuần túy bằng các GẠCH ĐẦU DÒNG NỘI DUNG. Mỗi phần tử trong mảng "objectives" BẮT ĐẦU bằng dấu gạch ngang "- ".
-           - NẾU CÓ TÍCH HỢP: Mỗi lĩnh vực/môn học tích hợp là một gạch đầu dòng riêng biệt, bắt đầu bằng "- Tích hợp [Tên môn học/lĩnh vực]: [Nội dung...]".
+           - NẾU CÓ TÍCH HỢP: Không lấy nội dung kiến thức vốn có sẵn của bài học cho là tích hợp. Phải tích hợp kỹ năng/vấn đề bổ trợ (như Giáo dục kĩ năng công dân số) vào bài học. Ghi rõ trên Yêu cầu cần đạt: "- Tích hợp giáo dục kĩ năng công dân số: [Nội dung...]" (hoặc lĩnh vực tích hợp tương ứng). Và trong Các hoạt động dạy học cũng phải ghi rõ đúng tên đó: "- Tích hợp giáo dục kĩ năng công dân số: [Liệt kê nội dung tích hợp cụ thể trong hoạt động đó]".
         3. **CHIỀU SÂU SƯ PHẠM, KPI GẠCH ĐẦU DÒNG VÀ NGUYÊN TẮC 1:1 NGANG HÀNG (Không tính hình ảnh và tích hợp):**
             - Nội dung phải có chiều sâu chuyên môn, mô tả rõ câu hỏi gợi mở của GV, cách thức tổ chức hoạt động (nhóm đôi, nhóm 4, trò chơi, phiếu học tập, thảo luận...) và câu trả lời/thao tác cụ thể của HS bám sát bài học trong SGK.
             - 1. Hoạt động mở đầu >= 4 gạch đầu dòng.
@@ -229,11 +237,10 @@ export const generateLessonPlan = async ({
             - 3. Hoạt động luyện tập, thực hành >= 10 gạch đầu dòng.
             - 4. Hoạt động vận dụng, trải nghiệm >= 4 gạch đầu dòng.
             - BẮT BUỘC NGUYÊN TẮC 1:1 NGANG HÀNG: Cột "Hoạt động của Giáo viên" có bao nhiêu gạch đầu dòng thì cột "Hoạt động của Học sinh" BẮT BUỘC có đúng bấy nhiêu gạch đầu dòng đáp lại tương ứng (Tỷ lệ 1:1 tuyệt đối).
-        4. **HÌNH ẢNH MINH HỌA TRỰC QUAN:**
-            - Tối thiểu 3 hình/tiết.
-            - CHỈ CÓ Ở CỘT GIÁO VIÊN.
-            - Không dùng gạch đầu dòng.
-            - Sử dụng cú pháp [Gợi ý hình ảnh: <Mô tả chi tiết nội dung hình ảnh bằng tiếng Việt bám sát bài học>] đặt ngay dưới bước của Giáo viên để hệ thống tự động kết xuất thành hình ảnh minh họa thực tế.
+        4. **HÌNH ẢNH TRỰC QUAN ĐỐI TƯỢNG / HỌC CỤ / MÔ HÌNH KỸ THUẬT (KHỚP 100% VỚI CÂU VĂN NGAY PHÍA TRÊN):**
+            - Tối thiểu 3 hình/tiết, CHỈ CÓ Ở CỘT GIÁO VIÊN, không dùng gạch đầu dòng.
+            - NGUYÊN TẮC BẤT DI BẤT DỊCH: Hình ảnh phải trực quan hóa chính xác ĐỐI TƯỢNG, HỌC CỤ hoặc MÔ HÌNH KỸ THUẬT được nhắc đến ở câu văn ngay phía trên nó. Tuyệt đối không tạo hình ảnh hoạt động dạy học chung chung, không vẽ cảnh lớp học hay định dạng giống phiếu học tập!
+            - Ví dụ tiêu chuẩn: Khi câu trên ghi "Giáo viên trình chiếu hình ảnh phân tách các bộ phận của rô-bốt" -> dòng dưới ghi \`[Gợi ý hình ảnh: Hình ảnh bóc tách chi tiết cấu tạo các bộ phận của một con rô-bốt gồm đầu và hệ thống cảm biến, bộ điều khiển, nguồn điện, khung cơ khí, hệ thống truyền động, tay máy chấp hành và bộ phận di chuyển]\`. Khi câu trên ghi "Giáo viên yêu cầu các nhóm mở bộ lắp ghép mô hình kĩ thuật" -> dòng dưới ghi \`[Gợi ý hình ảnh: Hình ảnh cận cảnh hộp bộ lắp ghép mô hình kĩ thuật dành cho học sinh tiểu học với các ngăn chứa thanh thẳng, bánh răng, bánh xe, ốc vít, đai ốc, tua-vít, cờ-lê và bản hướng dẫn lắp ghép]\`.
         5. **THỜI GIAN LINH HOẠT VÀ CHÍNH XÁC:**
             - Phân bổ thời gian linh hoạt, bám sát nội dung thực tế của 4 hoạt động (ví dụ đối với tiết ${totalDuration} phút: Mở đầu 4-5 phút, KT mới 12-15 phút, Luyện tập 11-14 phút, Vận dụng 4-5 phút).
             - BẮT BUỘC: Tổng số phút của cả 4 hoạt động cộng lại PHẢI BẰNG ĐÚNG CHÍNH XÁC ${totalDuration} phút.
@@ -369,7 +376,9 @@ export const generateLessonPlan = async ({
                 }
 
                 // Chuẩn hóa và đảm bảo tuyệt đối 100% mỗi tiết đều có đầy đủ 4 hoạt động theo đúng thứ tự
-                return ensureFourActivitiesInAllPeriods(parsed, inputData);
+                const finalPlan = ensureFourActivitiesInAllPeriods(parsed, inputData);
+                await pregenerateLessonImagesWithAI(finalPlan, finalApiKey, exactLessonTitleWithPeriod).catch(() => {});
+                return finalPlan;
             } catch (err: any) {
                 console.warn(`Gemini API retry warning (attempt ${i + 1}/${maxAttempts}, model ${currentModel}):`, err?.message || err);
 
