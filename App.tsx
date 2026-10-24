@@ -10,21 +10,46 @@ import JSZip from 'jszip';
 import { InputState, SourceType, ImageFile, LessonPlanResponse, PpctLesson, WeekPlanItem } from './types';
 import { generateLessonPlan, extractLessonsFromPpct } from './services/geminiService';
 import { downloadPpctWordTemplate, downloadSingleLessonWord, generateLessonPlanDocxBlob, enrichWeekPlansWithPedagogy } from './utils';
+import { pregenerateLessonImagesWithAI } from './utils/lessonImageGenerator';
 import LessonPreview from './components/LessonPreview';
 import TeachingPlanTab from './components/TeachingPlanTab';
+
+const getEnvGeminiKey = (): string => {
+    const procKey =
+        typeof process !== 'undefined' && process.env
+            ? process.env.GEMINI_API_KEY || process.env.API_KEY || ''
+            : '';
+    const viteKey =
+        typeof import.meta !== 'undefined' && (import.meta as any).env
+            ? (import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.VITE_API_KEY || ''
+            : '';
+    return (procKey || viteKey || '').trim();
+};
 
 const App: React.FC = () => {
     // Top-Level Main Tab: 'khbd' (Kế hoạch bài dạy) | 'khdh' (Kế hoạch dạy học)
     const [mainFeatureTab, setMainFeatureTab] = useState<'khbd' | 'khdh'>('khbd');
 
     // API Key State
-    const [userApiKey, setUserApiKey] = useState<string>('');
+    const [userApiKey, setUserApiKey] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('geminiApiKey') || getEnvGeminiKey() || '';
+        }
+        return getEnvGeminiKey();
+    });
+
+    const getEffectiveApiKey = (): string => {
+        return (userApiKey.trim() || getEnvGeminiKey() || '').trim();
+    };
 
     // Load API Key on mount
     useEffect(() => {
         const storedKey = localStorage.getItem('geminiApiKey');
         if (storedKey) {
             setUserApiKey(storedKey);
+        } else {
+            const envKey = getEnvGeminiKey();
+            if (envKey) setUserApiKey(envKey);
         }
     }, []);
 
@@ -38,6 +63,7 @@ const App: React.FC = () => {
     const [batchCurrentIndex, setBatchCurrentIndex] = useState<number>(-1);
     const abortBatchRef = useRef<boolean>(false);
     const [error, setError] = useState<string>('');
+    const rightPanelRef = useRef<HTMLDivElement | null>(null);
 
     // Hiển thị bảng KHBD: Mặc định ẩn đường viền (Chuẩn KHBD theo yêu cầu giáo viên)
     const [hideTableBorders, setHideTableBorders] = useState<boolean>(true);
@@ -51,20 +77,35 @@ const App: React.FC = () => {
     const [parsingPpct, setParsingPpct] = useState<boolean>(false);
     const [ppctError, setPpctError] = useState<string>('');
 
+    // Quick manual week input states
+    const [quickWeekNum, setQuickWeekNum] = useState<string>('1');
+    const [quickLessonName, setQuickLessonName] = useState<string>('');
+    const [quickNotes, setQuickNotes] = useState<string>('');
+
     // Shared upload cache across batch calls to avoid re-uploading large PDF files every week
     const uploadedFileCacheRef = useRef<Map<string, { uri: string; mimeType: string; name: string }>>(new Map());
 
-    // PPCT Lessons & Week Plans (Ban đầu hoàn toàn rỗng, CHỈ hiển thị sau khi người dùng tải file PPCT lên)
-    const [, setPpctLessons] = useState<PpctLesson[]>([]);
+    // PPCT Lessons & Week Plans
+    const [ppctLessons, setPpctLessons] = useState<PpctLesson[]>([]);
     const [weekPlans, setWeekPlans] = useState<WeekPlanItem[]>([]);
+    const weekPlansRef = useRef<WeekPlanItem[]>([]);
     const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
+
+    // Sync weekPlansRef with weekPlans state so async batch/single loops never read stale closures
+    const updateWeekPlansState = (updater: WeekPlanItem[] | ((prev: WeekPlanItem[]) => WeekPlanItem[])) => {
+        setWeekPlans(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            weekPlansRef.current = next;
+            return next;
+        });
+    };
 
     // Form Data
     const [inputData, setInputData] = useState<InputState>({
         week: '1',
         subject: 'Tin học',        
         grade: '4',          
-        periods: '3',       
+        periods: '1',       
         duration: '35',
         lessonName: '',     
         context: '',
@@ -80,9 +121,10 @@ const App: React.FC = () => {
     const updatePpctLessonsAndPlans = (lessons: PpctLesson[]) => {
         setPpctLessons(lessons);
         const enriched = enrichWeekPlansWithPedagogy(lessons);
-        setWeekPlans(enriched);
+        updateWeekPlansState(enriched);
         if (enriched.length > 0) {
             setSelectedWeekIndex(0);
+            setQuickWeekNum(String(enriched.length + 1));
             setInputData(prev => ({
                 ...prev,
                 week: enriched[0].week.replace(/Tuần\s*/gi, '').trim() || '1',
@@ -97,6 +139,61 @@ const App: React.FC = () => {
         }
     };
 
+    const handleAddQuickWeek = () => {
+        const trimmedLesson = quickLessonName.trim();
+        if (!trimmedLesson) {
+            setPpctError('Vui lòng nhập tên bài dạy để thêm tuần vào bảng Phân phối chương trình.');
+            return;
+        }
+        setPpctError('');
+        setError('');
+        const formattedWeek = /^tuần/i.test(quickWeekNum.trim())
+            ? quickWeekNum.trim()
+            : `Tuần ${quickWeekNum.trim() || (ppctLessons.length + 1)}`;
+
+        const newLesson: PpctLesson = {
+            week: formattedWeek,
+            lessonName: trimmedLesson,
+            periods: 1,
+            notes: quickNotes.trim()
+        };
+        const nextLessons = [...ppctLessons, newLesson];
+        setPpctLessons(nextLessons);
+        const enriched = enrichWeekPlansWithPedagogy(nextLessons).map((item, idx) => {
+            const existing = weekPlansRef.current[idx];
+            if (existing && existing.lessonName === item.lessonName && existing.week === item.week) {
+                return {
+                    ...item,
+                    status: existing.status,
+                    result: existing.result,
+                    error: existing.error
+                };
+            }
+            return item;
+        });
+        updateWeekPlansState(enriched);
+        const newIdx = enriched.length - 1;
+        setSelectedWeekIndex(newIdx);
+        const target = enriched[newIdx];
+        if (target) {
+            setInputData(prev => ({
+                ...prev,
+                week: target.week.replace(/Tuần\s*/gi, '').trim() || String(newIdx + 1),
+                lessonName: target.lessonName,
+                periods: '1',
+                integrationNotes: target.notes || '',
+                periodIndexInLesson: target.periodIndexInLesson,
+                totalPeriodsInLesson: target.totalPeriodsInLesson,
+                baseLessonName: target.baseLessonName,
+                pedagogicalNote: target.pedagogicalNote
+            }));
+        }
+        const nextWeekNumber = (parseInt(quickWeekNum.replace(/\D+/g, ''), 10) || enriched.length) + 1;
+        setQuickWeekNum(String(nextWeekNumber));
+        setQuickLessonName('');
+        setQuickNotes('');
+    };
+
     // --- Handlers ---
     const handlePpctFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -107,31 +204,36 @@ const App: React.FC = () => {
             }
             setPpctPdfFile(file);
             setPpctError('');
+            setError('');
             
-            if (userApiKey.trim()) {
-                await parsePpct(file, userApiKey.trim());
+            const effectiveKey = getEffectiveApiKey();
+            if (effectiveKey) {
+                await parsePpct(file, effectiveKey);
             } else {
-                setPpctError('Vui lòng nhập Gemini API Key phía trên để tự động phân tích file PPCT.');
+                setPpctError('Vui lòng nhập Gemini API Key phía trên rồi bấm "Phân tích file PPCT" để trích xuất danh sách bài học.');
             }
+            e.target.value = '';
         }
     };
 
-    const parsePpct = async (file: File, key: string) => {
-        if (!key) {
+    const parsePpct = async (file: File, key?: string) => {
+        const effectiveKey = (key || getEffectiveApiKey()).trim();
+        if (!effectiveKey) {
             setPpctError('Vui lòng nhập Gemini API Key phía trên để tự động phân tích file Phân phối chương trình.');
             return;
         }
         setParsingPpct(true);
         setPpctError('');
+        setError('');
         try {
-            const lessons = await extractLessonsFromPpct(file, key);
+            const lessons = await extractLessonsFromPpct(file, effectiveKey);
             if (lessons.length > 0) {
                 updatePpctLessonsAndPlans(lessons);
             } else {
                 setPpctError('Không tìm thấy dữ liệu bảng bài học trong file Phân phối chương trình.');
             }
         } catch (err: any) {
-            console.error(err);
+            console.warn(err);
             setPpctError(err.message || 'Không thể trích xuất danh sách bài học từ file PPCT.');
         } finally {
             setParsingPpct(false);
@@ -140,7 +242,7 @@ const App: React.FC = () => {
 
     const handleSelectWeekIndex = (idx: number) => {
         setSelectedWeekIndex(idx);
-        const item = weekPlans[idx];
+        const item = weekPlansRef.current[idx] || weekPlans[idx];
         if (item) {
             setInputData(prev => ({
                 ...prev,
@@ -167,6 +269,8 @@ const App: React.FC = () => {
                 previewUrl: URL.createObjectURL(file as File)
             }));
             setImages(prev => [...prev, ...newImages]);
+            setSourceType('image');
+            setError('');
         }
     };
 
@@ -181,6 +285,10 @@ const App: React.FC = () => {
             setPdfFiles(prev => [...prev, ...validFiles]);
             if (validFiles.length > 0 && !pdfFile) {
                 setPdfFile(validFiles[0]);
+            }
+            if (validFiles.length > 0) {
+                setSourceType('pdf');
+                setError('');
             }
             e.target.value = '';
         }
@@ -221,35 +329,49 @@ const App: React.FC = () => {
     };
 
     // --- Validation Helper ---
-    const validateBeforeRun = () => {
-        if (!userApiKey.trim()) {
-            setError('Vui lòng nhập Gemini API Key phía trên để tiến hành soạn bài.');
+    const validateBeforeRun = (): boolean => {
+        const effectiveKey = getEffectiveApiKey();
+        if (!effectiveKey) {
+            setError('Vui lòng nhập Gemini API Key ở mục Thiết lập phía trên để tiến hành soạn bài.');
             return false;
         }
-        if (weekPlans.length === 0) {
-            setError('Vui lòng tải lên file PDF Phân phối chương trình để nhận diện danh sách bài học trước.');
+        if (weekPlansRef.current.length === 0) {
+            setError('Vui lòng tải lên file Phân phối chương trình (hoặc thêm nhanh tuần học) để có danh sách bài dạy trước khi soạn.');
             return false;
         }
-        if (sourceType === 'image' && images.length === 0) {
-            setError('Vui lòng tải lên ít nhất một ảnh Sách Giáo Khoa (SGK).');
-            return false;
-        }
-        if (sourceType === 'pdf' && pdfFiles.length === 0 && !pdfFile) {
-            setError('Vui lòng tải lên ít nhất một file PDF Sách Giáo Khoa (SGK).');
-            return false;
+        // Tự động đồng bộ nguồn SGK nếu người dùng đã tải PDF hoặc Ảnh lên ở tab bên kia
+        if (sourceType === 'image' && images.length === 0 && (pdfFiles.length > 0 || pdfFile)) {
+            setSourceType('pdf');
+        } else if (sourceType === 'pdf' && pdfFiles.length === 0 && !pdfFile && images.length > 0) {
+            setSourceType('image');
         }
         setError('');
         return true;
     };
 
     // --- Generate a Single Week Plan ---
-    const generateForWeekIndex = async (idx: number): Promise<boolean> => {
-        const item = weekPlans[idx];
+    const generateForWeekIndex = async (idx: number, isBatchMode: boolean = false): Promise<boolean> => {
+        const currentPlans = weekPlansRef.current;
+        const item = currentPlans[idx];
         if (!item) return false;
 
-        setWeekPlans(prev => prev.map((w, i) => i === idx ? { ...w, status: 'generating', error: undefined } : w));
+        const effectiveKey = getEffectiveApiKey();
+        if (!effectiveKey) {
+            setError('Vui lòng nhập Gemini API Key để tiến hành soạn bài.');
+            return false;
+        }
+
+        updateWeekPlansState(prev =>
+            prev.map((w, i) => (i === idx ? { ...w, status: 'generating', error: undefined } : w))
+        );
 
         const effectiveNotes = (item.notes || '').trim();
+        const effectiveSourceType: SourceType =
+            sourceType === 'image' && images.length === 0 && (pdfFiles.length > 0 || pdfFile)
+                ? 'pdf'
+                : sourceType === 'pdf' && pdfFiles.length === 0 && !pdfFile && images.length > 0
+                    ? 'image'
+                    : sourceType;
 
         try {
             const resultData = await generateLessonPlan({
@@ -264,21 +386,40 @@ const App: React.FC = () => {
                     baseLessonName: item.baseLessonName,
                     pedagogicalNote: item.pedagogicalNote
                 },
-                sourceType,
+                sourceType: effectiveSourceType,
                 images,
                 pdfFile: pdfFiles.length > 0 ? pdfFiles[0] : pdfFile,
                 pdfFiles: pdfFiles.length > 0 ? pdfFiles : (pdfFile ? [pdfFile] : []),
                 referencePdfs,
                 ppctFile: ppctPdfFile,
-                apiKey: userApiKey.trim(),
+                apiKey: effectiveKey,
                 uploadedFileCache: uploadedFileCacheRef.current
             });
 
-            setWeekPlans(prev => prev.map((w, i) => i === idx ? { ...w, status: 'completed', result: resultData } : w));
+            // Tạo trước hình ảnh trực quan AI (nếu soạn lẻ thì đợi hoàn tất để hiển thị ngay, nếu soạn hàng loạt thì chạy nền để tốc độ soạn 35 tuần mượt mà)
+            if (isBatchMode) {
+                pregenerateLessonImagesWithAI(resultData, inputData.subject, inputData.grade, effectiveKey).catch(() => {});
+            } else {
+                try {
+                    await pregenerateLessonImagesWithAI(resultData, inputData.subject, inputData.grade, effectiveKey);
+                } catch {
+                    // Đã có bộ vẽ 3D trực quan fallback chuẩn xác
+                }
+            }
+
+            updateWeekPlansState(prev =>
+                prev.map((w, i) => (i === idx ? { ...w, status: 'completed', result: resultData, error: undefined } : w))
+            );
             return true;
         } catch (err: any) {
-            console.error(`Lỗi khi soạn ${item.week}:`, err);
-            setWeekPlans(prev => prev.map((w, i) => i === idx ? { ...w, status: 'error', error: err.message || 'Lỗi tạo bài dạy' } : w));
+            console.warn(`Lỗi khi soạn ${item.week}:`, err);
+            const errMsg = err?.message || 'Lỗi tạo Kế hoạch bài dạy. Vui lòng kiểm tra kết nối hoặc thử lại.';
+            updateWeekPlansState(prev =>
+                prev.map((w, i) => (i === idx ? { ...w, status: 'error', error: errMsg } : w))
+            );
+            if (!isBatchMode) {
+                setError(`Lỗi khi soạn ${item.week} (${item.lessonName}): ${errMsg}`);
+            }
             return false;
         }
     };
@@ -286,33 +427,39 @@ const App: React.FC = () => {
     // --- Action: Generate Single Selected Week ---
     const handleGenerateSingle = async (idxToGen = selectedWeekIndex) => {
         if (!validateBeforeRun()) return;
+        const targetIdx = idxToGen >= 0 && idxToGen < weekPlansRef.current.length ? idxToGen : 0;
+        const targetItem = weekPlansRef.current[targetIdx];
+        if (!targetItem) return;
+
         setLoadingSingle(true);
-        setSelectedWeekIndex(idxToGen);
-        const targetItem = weekPlans[idxToGen];
-        if (targetItem) {
-            setInputData(prev => ({
-                ...prev,
-                week: targetItem.week.replace(/Tuần\s*/gi, '').trim() || String(idxToGen + 1),
-                lessonName: targetItem.lessonName,
-                periods: '1',
-                integrationNotes: targetItem.notes || '',
-                periodIndexInLesson: targetItem.periodIndexInLesson,
-                totalPeriodsInLesson: targetItem.totalPeriodsInLesson,
-                baseLessonName: targetItem.baseLessonName,
-                pedagogicalNote: targetItem.pedagogicalNote
-            }));
-        }
-        const success = await generateForWeekIndex(idxToGen);
+        setSelectedWeekIndex(targetIdx);
+        setInputData(prev => ({
+            ...prev,
+            week: targetItem.week.replace(/Tuần\s*/gi, '').trim() || String(targetIdx + 1),
+            lessonName: targetItem.lessonName,
+            periods: '1',
+            integrationNotes: targetItem.notes || '',
+            periodIndexInLesson: targetItem.periodIndexInLesson,
+            totalPeriodsInLesson: targetItem.totalPeriodsInLesson,
+            baseLessonName: targetItem.baseLessonName,
+            pedagogicalNote: targetItem.pedagogicalNote
+        }));
+
+        const success = await generateForWeekIndex(targetIdx, false);
         setLoadingSingle(false);
         if (success) {
             setActiveTab('preview');
+            if (typeof window !== 'undefined' && window.innerWidth < 1024 && rightPanelRef.current) {
+                rightPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         }
     };
 
     // --- Action: Batch Generate All Weeks ---
     const handleGenerateAllWeeks = async () => {
         if (!validateBeforeRun()) return;
-        if (weekPlans.length === 0) {
+        const totalWeeks = weekPlansRef.current.length;
+        if (totalWeeks === 0) {
             setError('Chưa có danh sách tuần trong Phân phối chương trình. Vui lòng tải file PPCT lên trước.');
             return;
         }
@@ -321,17 +468,24 @@ const App: React.FC = () => {
         abortBatchRef.current = false;
         setActiveTab('list');
 
-        for (let i = 0; i < weekPlans.length; i++) {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024 && rightPanelRef.current) {
+            rightPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        for (let i = 0; i < totalWeeks; i++) {
             if (abortBatchRef.current) break;
-            
-            // Skip already completed
-            if (weekPlans[i].status === 'completed' && weekPlans[i].result) {
+
+            const currentItem = weekPlansRef.current[i];
+            if (!currentItem) continue;
+
+            // Bỏ qua các tuần đã hoàn thành trước đó
+            if (currentItem.status === 'completed' && currentItem.result) {
                 continue;
             }
 
             setBatchCurrentIndex(i);
             setSelectedWeekIndex(i);
-            await generateForWeekIndex(i);
+            await generateForWeekIndex(i, true);
         }
 
         setIsBatchGenerating(false);
@@ -347,31 +501,36 @@ const App: React.FC = () => {
     // --- Download Actions ---
     const handleDownloadWeekDoc = async (item: WeekPlanItem) => {
         if (!item.result) {
-            alert(`Tuần ${item.week} chưa có kết quả soạn bài để tải về.`);
+            setError(`Tuần ${item.week} chưa có kết quả soạn bài để tải về.`);
             return;
         }
-        const fileName = `KHBD_${item.week.replace(/\s+/g, '_')}_${item.lessonName.replace(/[\/\\?%*:|"<>]/g, '_')}`;
-        await downloadSingleLessonWord(
-            item.result,
-            {
-                ...inputData,
-                week: item.week,
-                lessonName: item.lessonName,
-                baseLessonName: item.baseLessonName,
-                periods: '1',
-                periodIndexInLesson: item.periodIndexInLesson,
-                totalPeriodsInLesson: item.totalPeriodsInLesson,
-                pedagogicalNote: item.pedagogicalNote
-            },
-            fileName,
-            hideTableBorders
-        );
+        try {
+            const fileName = `KHBD_${item.week.replace(/\s+/g, '_')}_${item.lessonName.replace(/[\/\\?%*:|"<>]/g, '_')}`;
+            await downloadSingleLessonWord(
+                item.result,
+                {
+                    ...inputData,
+                    week: item.week,
+                    lessonName: item.lessonName,
+                    baseLessonName: item.baseLessonName,
+                    periods: '1',
+                    periodIndexInLesson: item.periodIndexInLesson,
+                    totalPeriodsInLesson: item.totalPeriodsInLesson,
+                    pedagogicalNote: item.pedagogicalNote
+                },
+                fileName,
+                hideTableBorders
+            );
+        } catch (err: any) {
+            console.warn('Lỗi tải file Word:', err);
+            setError('Có lỗi xảy ra khi xuất file Word: ' + (err?.message || ''));
+        }
     };
 
     const handleDownloadAllZip = async () => {
-        const completedPlans = weekPlans.filter(w => w.status === 'completed' && w.result);
+        const completedPlans = weekPlansRef.current.filter(w => w.status === 'completed' && w.result);
         if (completedPlans.length === 0) {
-            alert('Chưa có tuần nào được soạn hoàn thành để nén và tải về.');
+            setError('Chưa có tuần nào được soạn hoàn thành để nén và tải về.');
             return;
         }
 
@@ -399,14 +558,14 @@ const App: React.FC = () => {
             const url = URL.createObjectURL(content);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `Ke_Hoach_Bai_Day_${weekPlans.length}_Tuan.zip`;
+            link.download = `Ke_Hoach_Bai_Day_${completedPlans.length}_Tuan.zip`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         } catch (err: any) {
-            console.error('Lỗi khi nén file zip:', err);
-            alert('Có lỗi xảy ra khi tạo file nén ZIP: ' + err.message);
+            console.warn('Lỗi khi nén file zip:', err);
+            setError('Có lỗi xảy ra khi tạo file nén ZIP: ' + (err?.message || ''));
         }
     };
 
@@ -583,11 +742,11 @@ const App: React.FC = () => {
                                     Hệ thống sẽ dựa vào file tải lên để hiển thị danh sách tuần chính xác tuyệt đối. Các tuần có ghi chú sẽ được tích hợp đúng môn học và nội dung theo yêu cầu.
                                 </div>
 
-                                {/* Upload PPCT PDF button */}
+                                {/* Upload PPCT PDF/Word/Image button */}
                                 <div className="p-3 border-2 border-dashed border-teal-300 rounded-lg bg-teal-50/70 text-center hover:bg-teal-100/60 transition-colors">
                                     <input 
                                         type="file" 
-                                        accept=".pdf,.docx,.doc" 
+                                        accept=".pdf,.docx,.doc,image/*" 
                                         onChange={handlePpctFileChange} 
                                         className="hidden" 
                                         id="ppct-upload" 
@@ -595,12 +754,85 @@ const App: React.FC = () => {
                                     <label htmlFor="ppct-upload" className="cursor-pointer block">
                                         <FileUp size={24} className="mx-auto text-teal-600 mb-1.5" />
                                         <span className="block text-xs font-bold text-teal-900">
-                                            {ppctPdfFile ? `Tệp đã chọn: ${ppctPdfFile.name}` : 'Tải lên file PDF Phân phối chương trình'}
+                                            {ppctPdfFile ? `Tệp đã chọn: ${ppctPdfFile.name}` : 'Tải lên file Phân phối chương trình (PDF, Word .docx hoặc Ảnh)'}
                                         </span>
                                         <span className="block text-[10px] text-teal-700 mt-0.5">
                                             {ppctPdfFile ? 'Bấm để đổi tệp khác' : 'Chứa bảng 4 cột: Cột 1 Tuần, Cột 2 Tên bài, Cột 3 Số tiết, Cột 4 Ghi chú'}
                                         </span>
                                     </label>
+                                    {ppctPdfFile && !parsingPpct && (
+                                        <button
+                                            type="button"
+                                            onClick={() => parsePpct(ppctPdfFile)}
+                                            className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-teal-700 hover:bg-teal-800 text-white rounded-md text-[11px] font-bold shadow-2xs cursor-pointer"
+                                        >
+                                            <RefreshCw size={12} /> Phân tích lại file PPCT
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Thêm nhanh tuần học / bài dạy thủ công */}
+                                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                                    <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                                        <span>Hoặc thêm nhanh tuần / bài dạy vào danh sách:</span>
+                                        {weekPlans.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setPpctLessons([]);
+                                                    updateWeekPlansState([]);
+                                                    setPpctPdfFile(null);
+                                                }}
+                                                className="text-[10px] text-red-600 hover:underline flex items-center gap-0.5 cursor-pointer"
+                                            >
+                                                <Trash2 size={11} /> Xóa danh sách
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-12 gap-1.5">
+                                        <input
+                                            type="text"
+                                            placeholder="Tuần (VD: 1)"
+                                            value={quickWeekNum}
+                                            onChange={e => setQuickWeekNum(e.target.value)}
+                                            className="col-span-3 p-1.5 bg-white border border-slate-300 rounded text-xs outline-none focus:border-teal-500"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Tên bài dạy (VD: Bài 1: Thông tin và quyết định)"
+                                            value={quickLessonName}
+                                            onChange={e => setQuickLessonName(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddQuickWeek();
+                                                }
+                                            }}
+                                            className="col-span-9 p-1.5 bg-white border border-slate-300 rounded text-xs outline-none focus:border-teal-500"
+                                        />
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="text"
+                                            placeholder="Ghi chú tích hợp (nếu có, VD: Tích hợp kỹ năng công dân số)"
+                                            value={quickNotes}
+                                            onChange={e => setQuickNotes(e.target.value)}
+                                            onKeyDown={e => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddQuickWeek();
+                                                }
+                                            }}
+                                            className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs outline-none focus:border-teal-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleAddQuickWeek}
+                                            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
+                                        >
+                                            <Plus size={13} /> Thêm tuần
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {parsingPpct && (
@@ -623,7 +855,7 @@ const App: React.FC = () => {
                                         <div className="p-2.5 bg-gradient-to-r from-teal-50 to-teal-100/70 border-b border-teal-200 flex items-center justify-between text-xs font-bold text-teal-950">
                                             <span className="flex items-center gap-1.5">
                                                 <Layers size={14} className="text-teal-700" />
-                                                BẢNG PHÂN PHỐI CHƯƠNG TRÌNH ({weekPlans.length} tuần từ file):
+                                                BẢNG PHÂN PHỐI CHƯƠNG TRÌNH ({weekPlans.length} tuần):
                                             </span>
                                             <span className="text-[10px] bg-teal-200/90 text-teal-900 px-2 py-0.5 rounded font-bold">
                                                 Đang chọn: {weekPlans[selectedWeekIndex]?.week || '...'}
@@ -673,6 +905,11 @@ const App: React.FC = () => {
                                                                         )}
                                                                         {item.status === 'generating' && (
                                                                             <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                                                                        )}
+                                                                        {item.status === 'error' && (
+                                                                            <span title={item.error || 'Lỗi'} className="inline-flex items-center">
+                                                                                <AlertTriangle size={12} className="text-red-500 shrink-0" />
+                                                                            </span>
                                                                         )}
                                                                         <span>{item.week}</span>
                                                                     </div>
@@ -726,7 +963,7 @@ const App: React.FC = () => {
                                 ) : (
                                     <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs text-gray-500">
                                         <p className="font-semibold text-gray-700 mb-1">Chưa có dữ liệu Phân phối chương trình</p>
-                                        <p className="text-[11px]">Vui lòng tải lên file PDF Phân phối chương trình ở trên để hệ thống tự động hiển thị đầy đủ 4 cột: Cột 1 Tuần, Cột 2 Tên bài, Cột 3 Số tiết, Cột 4 Ghi chú.</p>
+                                        <p className="text-[11px]">Vui lòng tải lên file PPCT (PDF / Word / Ảnh) hoặc thêm nhanh tuần học ở trên để bắt đầu soạn bài.</p>
                                     </div>
                                 )}
                             </div>
@@ -811,7 +1048,7 @@ const App: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* Integrations (Đã bổ sung ô nhập nội dung & môn học tích hợp, áp dụng chỉ cho tuần có ghi chú) */}
+                            {/* Integrations */}
                             <div className="pt-3 border-t border-dashed space-y-3">
                                 <h3 className="text-xs font-bold text-teal-900 flex items-center gap-1 uppercase tracking-wide">
                                     <Link2 size={14} className="text-teal-600" /> LĨNH VỰC TÍCH HỢP BỔ SUNG
@@ -892,7 +1129,7 @@ const App: React.FC = () => {
                                         ? `Đang soạn toàn bộ (${completedCount}/${weekPlans.length} tuần)...` 
                                         : weekPlans.length > 0 
                                             ? `SOẠN TOÀN BỘ ${weekPlans.length} TUẦN THEO PPCT`
-                                            : 'VUI LÒNG TẢI FILE PPCT ĐỂ BẮT ĐẦU'
+                                            : 'VUI LÒNG TẢI FILE PPCT HOẶC THÊM TUẦN ĐỂ BẮT ĐẦU'
                                     }
                                 </button>
 
@@ -909,9 +1146,9 @@ const App: React.FC = () => {
                                 {weekPlans.length > 0 && (
                                     <button 
                                         type="button"
-                                        onClick={() => handleGenerateSingle()}
+                                        onClick={() => handleGenerateSingle(selectedWeekIndex)}
                                         disabled={loadingSingle || isBatchGenerating}
-                                        className="w-full py-2 px-3 rounded-lg border border-teal-600 bg-teal-50 text-teal-800 hover:bg-teal-100 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                        className="w-full py-2.5 px-3 rounded-lg border border-teal-600 bg-teal-50 text-teal-800 hover:bg-teal-100 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                                     >
                                         <Send size={14} />
                                         {loadingSingle 
@@ -923,25 +1160,35 @@ const App: React.FC = () => {
                             </div>
 
                             {error && (
-                                <div className="p-3 bg-red-50 text-red-600 text-xs rounded-md border border-red-200 flex items-start gap-2">
-                                    <AlertTriangle size={15} className="mt-0.5 shrink-0" />
-                                    <div>{error}</div>
+                                <div className="p-3 bg-red-50 text-red-700 text-xs rounded-md border border-red-200 flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle size={15} className="mt-0.5 shrink-0 text-red-600" />
+                                        <div>{error}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setError('')}
+                                        className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer shrink-0"
+                                    >
+                                        <X size={14} />
+                                    </button>
                                 </div>
                             )}
                         </div>
                     </div>
 
                     {/* RIGHT COLUMN: DOWNLOAD CENTER & PREVIEW */}
-                    <div className="lg:col-span-7 space-y-4">
+                    <div ref={rightPanelRef} className="lg:col-span-7 space-y-4">
                         <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-md border border-teal-100 overflow-hidden flex flex-col min-h-[640px]">
                             {/* Tab Switcher */}
-                            <div className="flex border-b border-teal-100 bg-teal-50/60 p-2 gap-2">
+                            <div className="flex flex-wrap border-b border-teal-100 bg-teal-50/60 p-2 gap-2">
                                 <button
+                                    type="button"
                                     onClick={() => setActiveTab('list')}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${activeTab === 'list' ? 'bg-white text-teal-900 shadow-sm border border-teal-200' : 'text-gray-600 hover:text-gray-900'}`}
+                                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${activeTab === 'list' ? 'bg-white text-teal-900 shadow-sm border border-teal-200' : 'text-gray-600 hover:text-gray-900'}`}
                                 >
-                                    <Layers size={16} className="text-teal-600" />
-                                    DANH SÁCH CÁC TUẦN &amp; TẢI VỀ RIÊNG BIỆT
+                                    <Layers size={16} className="text-teal-600 shrink-0" />
+                                    <span>DANH SÁCH CÁC TUẦN &amp; TẢI VỀ RIÊNG BIỆT</span>
                                     {weekPlans.length > 0 && (
                                         <span className="ml-1 px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded-full text-[10px]">
                                             {completedCount}/{weekPlans.length}
@@ -949,16 +1196,33 @@ const App: React.FC = () => {
                                     )}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setActiveTab('preview')}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${activeTab === 'preview' ? 'bg-white text-teal-900 shadow-sm border border-teal-200' : 'text-gray-600 hover:text-gray-900'}`}
+                                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer ${activeTab === 'preview' ? 'bg-white text-teal-900 shadow-sm border border-teal-200' : 'text-gray-600 hover:text-gray-900'}`}
                                 >
-                                    <Eye size={16} className="text-teal-600" />
-                                    XEM CHI TIẾT GIÁO ÁN
+                                    <Eye size={16} className="text-teal-600 shrink-0" />
+                                    <span>XEM CHI TIẾT GIÁO ÁN</span>
                                     {currentSelectedPlan?.status === 'completed' && (
                                         <span className="w-2 h-2 rounded-full bg-green-500" />
                                     )}
                                 </button>
                             </div>
+
+                            {error && (
+                                <div className="mx-4 mt-3 p-3 bg-red-50 text-red-700 text-xs rounded-lg border border-red-200 flex items-start justify-between gap-2">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle size={15} className="mt-0.5 shrink-0 text-red-600" />
+                                        <div>{error}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setError('')}
+                                        className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer shrink-0"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            )}
 
                             {/* TAB 1: DANH SÁCH CÁC TUẦN RIÊNG BIỆT ĐỂ TẢI VỀ */}
                             {activeTab === 'list' && (
@@ -968,7 +1232,7 @@ const App: React.FC = () => {
                                             <Layers size={64} className="text-gray-300 mb-3" />
                                             <h3 className="text-base font-bold text-gray-700 mb-1">Chưa có dữ liệu Phân phối chương trình</h3>
                                             <p className="text-xs text-gray-500 max-w-md">
-                                                Vui lòng tải lên file PDF Phân phối chương trình ở cột bên trái để hệ thống nhận diện và hiển thị danh sách các tuần học thực tế để tiến hành soạn bài và tải về.
+                                                Vui lòng tải lên file Phân phối chương trình (PDF, Word hoặc Ảnh) hoặc thêm nhanh tuần học ở cột bên trái để hiển thị danh sách các tuần học và tiến hành soạn bài.
                                             </p>
                                         </div>
                                     ) : (
@@ -987,12 +1251,31 @@ const App: React.FC = () => {
                                                     <div className="text-[11px] text-gray-600 mt-0.5">
                                                         {integratedWeeksCount > 0 
                                                             ? `Có ${integratedWeeksCount} tuần được ghi chú tích hợp môn học & nội dung.` 
-                                                            : 'Mỗi tuần là 1 file Word riêng biệt. Thầy/Cô có thể tải từng tuần hoặc tải trọn bộ dạng ZIP.'
+                                                            : 'Mỗi tuần là 1 file Word riêng biệt. Thầy/Cô có thể soạn từng tuần hoặc soạn trọn bộ.'
                                                         }
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {!isBatchGenerating ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleGenerateAllWeeks}
+                                                            disabled={loadingSingle}
+                                                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold shadow-sm cursor-pointer transition-colors bg-teal-700 hover:bg-teal-800 text-white"
+                                                        >
+                                                            <Sparkles size={14} /> Soạn tất cả ({weekPlans.length} tuần)
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleStopBatch}
+                                                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold shadow-sm cursor-pointer transition-colors bg-red-600 hover:bg-red-700 text-white"
+                                                        >
+                                                            <Square size={13} /> Dừng soạn
+                                                        </button>
+                                                    )}
+
                                                     <button
                                                         type="button"
                                                         onClick={handleDownloadAllZip}
@@ -1000,7 +1283,7 @@ const App: React.FC = () => {
                                                         className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold shadow-sm cursor-pointer transition-colors ${completedCount > 0 ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
                                                         title="Nén tất cả các tuần đã soạn thành một file ZIP"
                                                     >
-                                                        <Archive size={14} /> Tải trọn bộ {weekPlans.length} tuần (.ZIP)
+                                                        <Archive size={14} /> Tải trọn bộ (.ZIP)
                                                     </button>
                                                 </div>
                                             </div>
@@ -1027,6 +1310,7 @@ const App: React.FC = () => {
                                                     const isSelected = idx === selectedWeekIndex;
                                                     const isDone = item.status === 'completed' && !!item.result;
                                                     const isGenerating = item.status === 'generating';
+                                                    const isError = item.status === 'error';
                                                     const hasNotes = !!(item.notes && item.notes.trim().length > 0);
 
                                                     return (
@@ -1041,7 +1325,7 @@ const App: React.FC = () => {
                                                                 </div>
 
                                                                 <div className="min-w-0">
-                                                                    <div className="text-sm font-bold text-gray-900 truncate">
+                                                                    <div className="text-sm font-bold text-gray-900 break-words">
                                                                         {item.lessonName}
                                                                     </div>
                                                                     <div className="flex flex-wrap items-center gap-2 mt-1">
@@ -1074,6 +1358,12 @@ const App: React.FC = () => {
                                                                             </span>
                                                                         )}
                                                                     </div>
+                                                                    {isError && item.error && (
+                                                                        <div className="mt-1.5 text-[11px] text-red-600 font-medium flex items-center gap-1">
+                                                                            <AlertTriangle size={12} className="shrink-0" />
+                                                                            <span>{item.error}</span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
 
@@ -1105,6 +1395,7 @@ const App: React.FC = () => {
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => handleGenerateSingle(idx)}
+                                                                            disabled={isBatchGenerating || loadingSingle}
                                                                             className="p-1.5 text-gray-400 hover:text-teal-700 rounded hover:bg-gray-100 cursor-pointer"
                                                                             title="Soạn lại tuần này"
                                                                         >
@@ -1121,9 +1412,18 @@ const App: React.FC = () => {
                                                                         type="button"
                                                                         onClick={() => handleGenerateSingle(idx)}
                                                                         disabled={isBatchGenerating || loadingSingle}
-                                                                        className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded border border-teal-300 cursor-pointer transition-colors"
+                                                                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded border cursor-pointer transition-colors ${
+                                                                            isError
+                                                                                ? 'text-red-700 bg-red-50 hover:bg-red-100 border-red-300'
+                                                                                : 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-300'
+                                                                        }`}
                                                                     >
-                                                                        <Play size={13} /> {item.totalPeriodsInLesson && item.totalPeriodsInLesson > 1 ? `Soạn Tiết ${item.periodIndexInLesson}` : 'Soạn tuần này'}
+                                                                        <Play size={13} />{' '}
+                                                                        {isError
+                                                                            ? 'Thử soạn lại'
+                                                                            : item.totalPeriodsInLesson && item.totalPeriodsInLesson > 1
+                                                                                ? `Soạn Tiết ${item.periodIndexInLesson}`
+                                                                                : 'Soạn tuần này'}
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -1154,6 +1454,7 @@ const App: React.FC = () => {
 
                                             {currentSelectedPlan?.result && (
                                                 <button 
+                                                    type="button"
                                                     onClick={() => handleDownloadWeekDoc(currentSelectedPlan)} 
                                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-bold transition-colors shadow-xs cursor-pointer"
                                                 >
@@ -1170,12 +1471,16 @@ const App: React.FC = () => {
                                                 <p className="font-semibold text-gray-600">
                                                     {weekPlans.length === 0 
                                                         ? 'Chưa có dữ liệu Phân phối chương trình để xem.' 
-                                                        : 'Tuần này chưa được soạn.'
+                                                        : currentSelectedPlan?.status === 'generating'
+                                                            ? `Đang soạn ${currentSelectedPlan?.week}... Vui lòng đợi trong giây lát.`
+                                                            : 'Tuần này chưa được soạn.'
                                                     }
                                                 </p>
-                                                {weekPlans.length > 0 && (
+                                                {weekPlans.length > 0 && currentSelectedPlan?.status !== 'generating' && (
                                                     <button
+                                                        type="button"
                                                         onClick={() => handleGenerateSingle(selectedWeekIndex)}
+                                                        disabled={loadingSingle || isBatchGenerating}
                                                         className="mt-3 px-4 py-2 bg-teal-600 text-white rounded-lg text-xs font-bold hover:bg-teal-700 cursor-pointer flex items-center gap-1.5 shadow"
                                                     >
                                                         <Play size={14} /> Soạn ngay {currentSelectedPlan?.week || ''}
@@ -1207,7 +1512,7 @@ const App: React.FC = () => {
                 </main>
                 ) : (
                     <TeachingPlanTab 
-                        apiKey={userApiKey}
+                        apiKey={getEffectiveApiKey()}
                         initialSchoolName={inputData.schoolName}
                         initialTeacherName={inputData.teacherName}
                     />

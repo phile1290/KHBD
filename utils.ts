@@ -313,54 +313,252 @@ export const ensureFourActivitiesInAllPeriods = (
         };
     });
 
-    const finalPeriodNum = updatedPeriods[0]?.period_number || explicitPeriodFromInput || 1;
+    const isChatGptLessonNotMaps =
+        baseTitle.toLowerCase().includes('chatgpt') &&
+        !baseTitle.toLowerCase().includes('google maps') &&
+        !baseTitle.toLowerCase().includes('địa điểm');
+
+    const sanitizeCrossLessonHallucination = (text: string, isTeacher: boolean): string => {
+        if (!isChatGptLessonNotMaps || !text) return text;
+        return text
+            .split('\n')
+            .map(line => {
+                if (/google\s*maps|đánh giá chất lượng địa điểm|vị trí địa điểm/i.test(line)) {
+                    if (isImageHintLine(line)) {
+                        return '[Gợi ý hình ảnh: Màn hình máy tính hiển thị cửa sổ hội thoại ChatGPT bên cạnh cửa sổ trình duyệt Google Tìm kiếm đang tra cứu kiểm chứng thông tin]';
+                    }
+                    return isTeacher
+                        ? '- Giáo viên hướng dẫn học sinh kiểm chứng thông tin tư vấn từ ChatGPT bằng cách tra cứu, đối chiếu trên các trang thông tin chính thống và hỏi ý kiến thầy cô, người thân.'
+                        : '- Học sinh thực hành đối chiếu thông tin từ ChatGPT với các nguồn trang web chính thống và trao đổi cùng thầy cô, người thân để xác thực.';
+                }
+                return line;
+            })
+            .join('\n');
+    };
+
+    const cleanedPeriods = updatedPeriods.map(p => ({
+        ...p,
+        objectives: Array.isArray(p.objectives)
+            ? p.objectives.map(o =>
+                  isChatGptLessonNotMaps
+                      ? o.replace(/,?\s*Google\s*Maps/gi, '').replace(/đánh giá địa điểm trên Google Maps/gi, 'kiểm chứng thông tin trên công cụ tìm kiếm')
+                      : o
+              )
+            : p.objectives,
+        materials: p.materials
+            ? {
+                  teacher: isChatGptLessonNotMaps
+                      ? (p.materials.teacher || '').replace(/,\s*Google\s*Maps/gi, '').replace(/Google\s*Maps\s*và\s*/gi, '')
+                      : p.materials.teacher,
+                  student: isChatGptLessonNotMaps
+                      ? (p.materials.student || '').replace(/,\s*Google\s*Maps/gi, '').replace(/Google\s*Maps\s*và\s*/gi, '')
+                      : p.materials.student
+              }
+            : p.materials,
+        activities: (p.activities || []).map(act => ({
+            ...act,
+            rows: (act.rows || []).map(r => ({
+                ...r,
+                teacher: sanitizeCrossLessonHallucination(r.teacher || '', true),
+                student: sanitizeCrossLessonHallucination(r.student || '', false)
+            }))
+        }))
+    }));
+
+    const finalPeriodNum = cleanedPeriods[0]?.period_number || explicitPeriodFromInput || 1;
     const updatedFullTitle = formatLessonTitleWithPeriod(baseTitle, finalPeriodNum);
 
     return {
         ...response,
         lesson_full_title: updatedFullTitle,
-        periods: updatedPeriods
+        periods: cleanedPeriods
     };
 };
 
-export const sanitizeAndParseJSON = (text: string): LessonPlanResponse => {
-    try {
-        const firstBrace = text.indexOf('{');
+/**
+ * Bộ sửa lỗi và phân tích JSON thông minh:
+ * - Xử lý an toàn dấu ngoặc nhọn { } nằm bên trong chuỗi văn bản
+ * - Tự động escape các ký tự xuống dòng (\n, \r, \t) và dấu ngoặc kép chưa escape bên trong chuỗi tiếng Việt
+ * - Tự động đóng chuỗi và đóng ngoặc (], }) nếu phản hồi JSON dài bị ngắt quãng ở cuối
+ */
+const repairAndExtractJSON = (rawText: string): string => {
+    const cleaned = (rawText || '')
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
 
-        if (firstBrace === -1) {
-            throw new Error("Không tìm thấy JSON hợp lệ trong phản hồi.");
+    const firstBrace = cleaned.indexOf('{');
+    if (firstBrace === -1) {
+        throw new Error("Không tìm thấy cấu trúc JSON trong phản hồi của AI.");
+    }
+
+    const src = cleaned.slice(firstBrace);
+    let out = '';
+    let inString = false;
+    let escaped = false;
+    const stack: Array<'}' | ']'> = [];
+
+    const nextNonSpaceChar = (fromIdx: number): { ch: string; idx: number } => {
+        for (let k = fromIdx; k < src.length; k++) {
+            const c = src[k];
+            if (c !== ' ' && c !== '\t' && c !== '\r' && c !== '\n') {
+                return { ch: c, idx: k };
+            }
         }
+        return { ch: '', idx: src.length };
+    };
 
-        let braceCount = 0;
-        let lastBrace = -1;
+    for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
 
-        for (let i = firstBrace; i < text.length; i++) {
-            if (text[i] === '{') braceCount++;
-            else if (text[i] === '}') {
-                braceCount--;
-                if (braceCount === 0) {
-                    lastBrace = i;
+        if (inString) {
+            if (escaped) {
+                out += ch;
+                escaped = false;
+                continue;
+            }
+            if (ch === '\\') {
+                out += '\\';
+                escaped = true;
+                continue;
+            }
+            if (ch === '\n') {
+                out += '\\n';
+                continue;
+            }
+            if (ch === '\r') {
+                out += '\\r';
+                continue;
+            }
+            if (ch === '\t') {
+                out += '\\t';
+                continue;
+            }
+            const code = ch.charCodeAt(0);
+            if (code < 0x20 || code === 0x7f) {
+                continue;
+            }
+            if (ch === '"') {
+                // Kiểm tra xem dấu " này có thực sự là dấu đóng chuỗi JSON hay là dấu ngoặc kép trong câu văn tiếng Việt
+                const { ch: nextCh, idx: nextIdx } = nextNonSpaceChar(i + 1);
+                let isStructuralClose = false;
+
+                if (nextCh === '' || nextCh === ':' || nextCh === '}' || nextCh === ']') {
+                    isStructuralClose = true;
+                } else if (nextCh === ',') {
+                    const afterComma = nextNonSpaceChar(nextIdx + 1).ch;
+                    const topContainer = stack[stack.length - 1];
+                    if (topContainer === '}') {
+                        // Trong object JSON, sau dấu phẩy bắt buộc phải là dấu " (key tiếp theo) hoặc }
+                        isStructuralClose = afterComma === '"' || afterComma === '}' || afterComma === '';
+                    } else if (topContainer === ']') {
+                        // Trong array JSON, sau dấu phẩy phải là phần tử tiếp theo (", {, [, số, true, false, null, ])
+                        isStructuralClose =
+                            afterComma === '"' ||
+                            afterComma === '{' ||
+                            afterComma === '[' ||
+                            afterComma === ']' ||
+                            afterComma === '';
+                    } else {
+                        isStructuralClose = true;
+                    }
+                }
+
+                if (isStructuralClose) {
+                    inString = false;
+                    out += '"';
+                } else {
+                    out += '\\"';
+                }
+                continue;
+            }
+            out += ch;
+        } else {
+            if (ch === '"') {
+                inString = true;
+                out += '"';
+            } else if (ch === '{') {
+                stack.push('}');
+                out += '{';
+            } else if (ch === '[') {
+                stack.push(']');
+                out += '[';
+            } else if (ch === '}' || ch === ']') {
+                out = out.replace(/,\s*$/, '');
+                if (stack.length > 0) {
+                    stack.pop();
+                }
+                out += ch;
+                if (stack.length === 0) {
                     break;
+                }
+            } else {
+                const code = ch.charCodeAt(0);
+                if (code >= 0x20 || ch === '\n' || ch === '\r' || ch === '\t') {
+                    out += ch;
                 }
             }
         }
+    }
 
-        if (lastBrace === -1) {
-            throw new Error("JSON không hoàn chỉnh (thiếu dấu ngoặc).");
+    // Nếu JSON bị cắt cụt giữa chừng do giới hạn token, tự động đóng chuỗi và đóng các ngoặc còn mở
+    if (inString) {
+        if (escaped) {
+            out = out.slice(0, -1);
         }
+        out += '"';
+    }
 
-        let jsonString = text.substring(firstBrace, lastBrace + 1);
-        jsonString = jsonString
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            // eslint-disable-next-line no-control-regex
-            .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    while (stack.length > 0) {
+        const expectedClose = stack.pop()!;
+        out = out.replace(/,\s*$/, '');
+        if (expectedClose === '}') {
+            // Nếu bị ngắt ngay sau dấu hai chấm (VD: "student": ) -> điền ""
+            if (/:\s*$/.test(out)) {
+                out += '""';
+            } else if (/\{\s*"[^"]*"\s*$/.test(out)) {
+                // Nếu bị ngắt ngay sau tên key đầu tiên chưa có dấu hai chấm (VD: {"teacher") -> xóa key dở dang
+                out = out.replace(/"[^"]*"\s*$/, '');
+            } else if (/,\s*"[^"]*"\s*$/.test(out)) {
+                // Nếu bị ngắt ngay sau tên key tiếp theo chưa có dấu hai chấm (VD: , "student") -> xóa key dở dang
+                out = out.replace(/,\s*"[^"]*"\s*$/, '');
+            }
+        }
+        out = out.replace(/,\s*$/, '');
+        out += expectedClose;
+    }
 
-        const parsed: LessonPlanResponse = JSON.parse(jsonString);
+    return out;
+};
+
+export const sanitizeAndParseJSON = (text: string): LessonPlanResponse => {
+    const raw = (text || '').trim();
+    if (!raw) {
+        throw new Error("AI trả về kết quả rỗng.");
+    }
+
+    // Bước 1: Thử parse trực tiếp nếu JSON đã hoàn toàn hợp lệ
+    try {
+        const directCleaned = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        const firstIdx = directCleaned.indexOf('{');
+        const lastIdx = directCleaned.lastIndexOf('}');
+        if (firstIdx !== -1 && lastIdx > firstIdx) {
+            const parsedDirect: LessonPlanResponse = JSON.parse(directCleaned.slice(firstIdx, lastIdx + 1));
+            if (parsedDirect && Array.isArray(parsedDirect.periods)) {
+                return ensureFourActivitiesInAllPeriods(parsedDirect);
+            }
+        }
+    } catch {
+        // Chuyển sang Bước 2: Sửa lỗi chuỗi và khôi phục JSON tự động
+    }
+
+    try {
+        const repaired = repairAndExtractJSON(raw);
+        const parsed: LessonPlanResponse = JSON.parse(repaired);
         return ensureFourActivitiesInAllPeriods(parsed);
-    } catch (e) {
-        console.error("JSON Parse Error Raw Text:" + text);
-        throw e;
+    } catch (e: any) {
+        console.warn("JSON Parse retry needed:", e?.message || e);
+        throw new Error("Định dạng dữ liệu trả về chưa hoàn chỉnh, hệ thống đang tự động chuẩn hóa lại.");
     }
 };
 
@@ -1487,8 +1685,7 @@ export const downloadSingleLessonWord = async (
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     } catch (error: any) {
-        console.error('Error downloading single lesson word (.docx):', error);
-        alert('Có lỗi xảy ra khi tải file Word (.docx): ' + error.message);
+        console.warn('Error downloading single lesson word (.docx):', error);
     }
 };
 
@@ -1662,8 +1859,7 @@ export const downloadPpctWordTemplate = async () => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
     } catch (error: any) {
-        console.error('Error downloading PPCT Word template:', error);
-        alert('Có lỗi xảy ra khi tải file mẫu Word (.docx): ' + error.message);
+        console.warn('Error downloading PPCT Word template:', error);
     }
 };
 

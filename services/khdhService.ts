@@ -105,18 +105,52 @@ export const extractGradeNumber = (className?: string): string => {
     return match ? match[1] : '';
 };
 
+const generateKhdhJsonWithFallback = async (ai: GoogleGenAI, parts: any[]): Promise<string> => {
+    const models = [
+        'gemini-2.5-flash',
+        'gemini-3-flash-preview',
+        'gemini-flash-latest',
+        'gemini-3.1-flash-lite-preview'
+    ];
+    let lastErr: any = null;
+    for (const modelName of models) {
+        const isGemini3 = modelName.startsWith('gemini-3');
+        try {
+            const config: any = {
+                responseMimeType: "application/json",
+                temperature: 0.1
+            };
+            if (isGemini3) {
+                config.thinkingConfig = { thinkingLevel: ThinkingLevel.MINIMAL };
+            }
+            const response = await ai.models.generateContent({
+                model: modelName,
+                contents: { parts },
+                config
+            });
+            if (response && response.text) {
+                return response.text;
+            }
+        } catch (err: any) {
+            lastErr = err;
+            console.warn(`KHDH model ${modelName} fallback:`, err?.message || err);
+        }
+    }
+    throw lastErr || new Error("Không thể kết nối với AI.");
+};
+
 /**
- * Trích xuất dữ liệu PPCT từ các tệp người dùng tải lên (PDF hoặc ảnh)
+ * Trích xuất dữ liệu PPCT từ các tệp người dùng tải lên (PDF, Word .docx hoặc ảnh)
  * Bám sát dữ liệu thực tế trong tệp, giữ nguyên tuần và số tiết T1/T2
  */
 export const extractMultiplePpcts = async (
     files: File[],
     apiKey: string
 ): Promise<KhdhSubjectData[]> => {
-    let finalApiKey = apiKey;
+    let finalApiKey = (apiKey || "").trim();
     if (!finalApiKey) {
         try {
-            finalApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+            finalApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY || "").trim();
         } catch (e) {}
     }
 
@@ -129,11 +163,12 @@ export const extractMultiplePpcts = async (
 
     for (let fIdx = 0; fIdx < files.length; fIdx++) {
         const file = files[fIdx];
+        const fileNameLower = file.name.toLowerCase();
         let mimeType = file.type;
         if (!mimeType) {
-            if (file.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
-            else if (file.name.toLowerCase().endsWith('.png')) mimeType = 'image/png';
-            else if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
+            if (fileNameLower.endsWith('.pdf')) mimeType = 'application/pdf';
+            else if (fileNameLower.endsWith('.png')) mimeType = 'image/png';
+            else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
             else mimeType = 'application/pdf';
         }
 
@@ -141,7 +176,20 @@ export const extractMultiplePpcts = async (
         let uploadedName: string | null = null;
 
         try {
-            if (file.size <= 18 * 1024 * 1024) {
+            let docxHtml = "";
+            if (fileNameLower.endsWith('.docx')) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const { value } = await mammoth.convertToHtml({ arrayBuffer });
+                    docxHtml = value;
+                } catch (e) {}
+            }
+
+            if (docxHtml) {
+                parts.push({
+                    text: `DƯỚI ĐÂY LÀ NỘI DUNG TỪ TỆP WORD PPCT (${file.name}):\n${docxHtml.slice(0, 50000)}`
+                });
+            } else if (file.size <= 19 * 1024 * 1024) {
                 const base64Data = await fileToBase64(file);
                 parts.push({
                     inlineData: { data: base64Data, mimeType }
@@ -195,17 +243,7 @@ BẮT BUỘC chỉ trả về JSON hợp lệ, không thêm văn bản ngoài JS
 `;
             parts.push({ text: prompt });
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3.1-flash-lite',
-                contents: { parts },
-                config: {
-                    responseMimeType: "application/json",
-                    temperature: 0.1,
-                    thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL }
-                }
-            });
-
-            const text = response.text || '';
+            const text = await generateKhdhJsonWithFallback(ai, parts);
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]);
@@ -255,7 +293,7 @@ BẮT BUỘC chỉ trả về JSON hợp lệ, không thêm văn bản ngoài JS
     }
 
     if (results.length === 0) {
-        throw new Error("Không thể trích xuất được bảng bài học từ các tệp PPCT đã tải lên. Vui lòng kiểm tra lại file PDF/ảnh.");
+        throw new Error("Không thể trích xuất được bảng bài học từ các tệp PPCT đã tải lên. Vui lòng kiểm tra lại file PDF/Word/ảnh.");
     }
 
     return results;
@@ -275,10 +313,10 @@ export const parseKhdhTemplateFile = async (
     layoutOrientation: 'portrait' | 'landscape';
     rawRows: Partial<KhdhRow>[];
 }> => {
-    let finalApiKey = apiKey;
+    let finalApiKey = (apiKey || "").trim();
     if (!finalApiKey) {
         try {
-            finalApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+            finalApiKey = ((import.meta as any).env?.VITE_GEMINI_API_KEY || "").trim();
         } catch (e) {}
     }
 
@@ -318,7 +356,7 @@ export const parseKhdhTemplateFile = async (
                 else mimeType = 'application/pdf';
             }
 
-            if (templateFile.size <= 18 * 1024 * 1024) {
+            if (templateFile.size <= 19 * 1024 * 1024) {
                 const base64Data = await fileToBase64(templateFile);
                 parts.push({ inlineData: { data: base64Data, mimeType } });
             } else {
@@ -367,17 +405,7 @@ BẮT BUỘC chỉ trả về JSON hợp lệ.
 `;
         parts.push({ text: prompt });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite',
-            contents: { parts },
-            config: {
-                responseMimeType: "application/json",
-                temperature: 0.1,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL }
-            }
-        });
-
-        const resText = response.text || '';
+        const resText = await generateKhdhJsonWithFallback(ai, parts);
         const jsonMatch = resText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             const parsed = JSON.parse(jsonMatch[0]);

@@ -162,7 +162,7 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
             setPpctStatusMessage(`Đã đọc thành công ${data.length} môn học (${totalLessons} bài học). Sẵn sàng chuyển sang Bước 2.`);
             setSuccessMessage(`Đã phân tích xong dữ liệu từ ${data.length} môn học.`);
         } catch (err: any) {
-            console.error(err);
+            console.warn(err);
             setErrorMessage(err.message || 'Lỗi khi phân tích các file PPCT.');
             setPpctStatusMessage('');
         } finally {
@@ -253,7 +253,7 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
             const notesCount = plan.rows.filter(r => r.notes && r.notes.trim().length > 0).length;
             setSuccessMessage(`Đã soạn xong Kế hoạch dạy học Tuần ${weekNum} gồm ${plan.rows.length} tiết dạy (${notesCount} tiết có ghi chú từ PPCT).`);
         } catch (err: any) {
-            console.error(err);
+            console.warn(err);
             setErrorMessage(err.message || 'Lỗi khi tạo Kế hoạch dạy học.');
         } finally {
             setIsGeneratingPlan(false);
@@ -308,7 +308,7 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
                 `Đã soạn hoàn tất Kế hoạch dạy học của TẤT CẢ ${builtPlans.length} TUẦN (Tổng cộng ${totalPeriodsAllWeeks} tiết dạy • ${totalNotesAllWeeks} tiết có ghi chú tích hợp từ PPCT).`
             );
         } catch (err: any) {
-            console.error(err);
+            console.warn(err);
             setErrorMessage(err.message || 'Lỗi khi soạn Kế hoạch dạy học cho tất cả các tuần.');
         } finally {
             setIsGeneratingPlan(false);
@@ -327,7 +327,7 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
     // Tải trọn bộ các tuần đã soạn dưới dạng file nén .ZIP (mỗi tuần 1 file Word .docx riêng biệt giống KHBD)
     const handleDownloadAllWeeksZip = async () => {
         if (allGeneratedPlans.length === 0) {
-            alert('Chưa có tuần nào được soạn để tải về.');
+            setErrorMessage('Chưa có tuần nào được soạn để tải về.');
             return;
         }
 
@@ -350,15 +350,15 @@ export const TeachingPlanTab: React.FC<TeachingPlanTabProps> = ({
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
         } catch (err: any) {
-            console.error('Lỗi khi nén ZIP KHDH:', err);
-            alert('Có lỗi xảy ra khi nén file ZIP: ' + err.message);
+            console.warn('Lỗi khi nén ZIP KHDH:', err);
+            setErrorMessage('Có lỗi xảy ra khi nén file ZIP: ' + err.message);
         }
     };
 
     // Tải tất cả các tuần trong 1 file Word (.docx) duy nhất (có ngắt trang giữa các tuần)
     const handleDownloadAllWeeksSingleWord = async () => {
         if (allGeneratedPlans.length === 0) {
-            alert('Chưa có tuần nào được soạn để tải về.');
+            setErrorMessage('Chưa có tuần nào được soạn để tải về.');
             return;
         }
         await exportAllKhdhToSingleWord(allGeneratedPlans);

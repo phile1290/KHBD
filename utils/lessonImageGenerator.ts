@@ -240,202 +240,138 @@ const drawNumberedCalloutCircle = (
 };
 
 /**
- * 1. HÌNH ẢNH BÓC TÁCH CHI TIẾT CẤU TẠO CÁC BỘ PHẬN CỦA RÔ-BỐT (ROBOT ANATOMY BREAKDOWN)
- * Khớp chuẩn mực với yêu cầu: "Giáo viên trình chiếu hình ảnh phân tích/phân tách các bộ phận của robot"
+ * /**
+ * 1. HÌNH ẢNH TRỰC QUAN RÔ-BỐT VÀ CÁC BỘ PHẬN CẤU TẠO ĐẶT TRÊN BÀN KỸ THUẬT
+ * (Hoàn toàn trực quan 3D: Rô-bốt ở trung tâm cùng các linh kiện thực tế đặt cạnh trên mặt bàn — tuyệt đối không vẽ nhánh mindmap hay hộp chữ infographic)
  */
 const drawRobotAnatomyScene = (ctx: CanvasRenderingContext2D) => {
-    // Nền studio kỹ thuật hiện đại
     const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
-    bgGrad.addColorStop(0, '#F1F5F9');
-    bgGrad.addColorStop(0.75, '#E2E8F0');
-    bgGrad.addColorStop(1, '#CBD5E1');
-    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#94A3B8', 2);
+    bgGrad.addColorStop(0, '#EFF6FF');
+    bgGrad.addColorStop(0.7, '#DBEAFE');
+    bgGrad.addColorStop(1, '#BFDBFE');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#3B82F6', 2);
 
-    // Lưới kỹ thuật mờ phía sau
-    ctx.save();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-    ctx.lineWidth = 1;
-    for (let x = 40; x < 740; x += 35) {
-        ctx.beginPath();
-        ctx.moveTo(x, 12);
-        ctx.lineTo(x, 400);
-        ctx.stroke();
-    }
-    for (let y = 20; y < 400; y += 35) {
-        ctx.beginPath();
-        ctx.moveTo(12, y);
-        ctx.lineTo(748, y);
-        ctx.stroke();
-    }
-    ctx.restore();
-
-    // Bệ đứng 3D của Rô-bốt
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(380, 384, 125, 22, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#94A3B8';
-    ctx.fill();
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.ellipse(380, 380, 108, 17, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#E2E8F0';
-    ctx.fill();
-    ctx.strokeStyle = '#0284C7';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
+    // Mặt bàn gỗ thực hành
+    const tableGrad = ctx.createLinearGradient(0, 310, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(0.5, '#B45309');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 312, 736, 94, 8, tableGrad, '#78350F', 1.5);
 
     const cx = 380;
 
-    // --- 1. ĐẦU RÔ-BỐT & HỆ THỐNG CẢM BIẾN (SENSES) ---
-    // Ăng-ten thu phát tín hiệu
+    // Bóng đổ và bệ đứng 3D của Rô-bốt
+    ctx.beginPath();
+    ctx.ellipse(cx, 366, 118, 18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+    ctx.fill();
+
+    // --- 1. ĐẦU RÔ-BỐT & CAMERA CẢM BIẾN ---
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(cx - 28, 56);
-    ctx.lineTo(cx - 34, 34);
-    ctx.moveTo(cx + 28, 56);
-    ctx.lineTo(cx + 34, 34);
+    ctx.moveTo(cx - 28, 48);
+    ctx.lineTo(cx - 34, 26);
+    ctx.moveTo(cx + 28, 48);
+    ctx.lineTo(cx + 34, 26);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(cx - 34, 32, 5, 0, Math.PI * 2);
-    ctx.arc(cx + 34, 32, 5, 0, Math.PI * 2);
+    ctx.arc(cx - 34, 24, 5, 0, Math.PI * 2);
+    ctx.arc(cx + 34, 24, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#0EA5E9';
     ctx.fill();
 
-    // Khối hộp sọ cơ khí
-    const headGrad = ctx.createLinearGradient(cx - 46, 52, cx + 46, 114);
+    const headGrad = ctx.createLinearGradient(cx - 48, 44, cx + 48, 108);
     headGrad.addColorStop(0, '#FFFFFF');
-    headGrad.addColorStop(0.5, '#E2E8F0');
+    headGrad.addColorStop(0.6, '#E2E8F0');
     headGrad.addColorStop(1, '#94A3B8');
-    drawRoundedRect(ctx, cx - 46, 52, 92, 62, 16, headGrad, '#334155', 2.2);
+    drawRoundedRect(ctx, cx - 48, 44, 96, 64, 16, headGrad, '#334155', 2.2);
 
-    // Kính che mặt cảm biến quang học
-    drawRoundedRect(ctx, cx - 36, 64, 72, 32, 10, '#0F172A', '#0284C7', 1.8);
-
-    // Hai mắt camera & cảm biến siêu âm
-    [-16, 16].forEach(offsetX => {
+    drawRoundedRect(ctx, cx - 38, 56, 76, 34, 10, '#0F172A', '#0284C7', 1.8);
+    [-17, 17].forEach(offsetX => {
         ctx.beginPath();
-        ctx.arc(cx + offsetX, 80, 10, 0, Math.PI * 2);
+        ctx.arc(cx + offsetX, 73, 10, 0, Math.PI * 2);
         ctx.fillStyle = '#0284C7';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(cx + offsetX, 80, 5.5, 0, Math.PI * 2);
+        ctx.arc(cx + offsetX, 73, 5.5, 0, Math.PI * 2);
         ctx.fillStyle = '#38BDF8';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(cx + offsetX - 2, 78, 2, 0, Math.PI * 2);
+        ctx.arc(cx + offsetX - 2, 71, 2, 0, Math.PI * 2);
         ctx.fillStyle = '#FFFFFF';
         ctx.fill();
     });
 
-    // Dải đèn cảm biến âm thanh ở miệng
-    drawRoundedRect(ctx, cx - 18, 101, 36, 6, 3, '#38BDF8');
+    drawRoundedRect(ctx, cx - 18, 95, 36, 6, 3, '#38BDF8');
+    drawRoundedRect(ctx, cx - 16, 108, 32, 14, 4, '#64748B', '#334155', 1.8);
 
-    // Khớp cổ cơ khí
-    drawRoundedRect(ctx, cx - 16, 114, 32, 14, 4, '#64748B', '#334155', 1.8);
-
-    // --- 2. THÂN RÔ-BỐT (KHUNG CƠ KHÍ + BỘ ĐIỀU KHIỂN + NGUỒN ĐIỆN BÓC TÁCH) ---
-    const torsoGrad = ctx.createLinearGradient(cx - 64, 128, cx + 64, 250);
+    // --- 2. THÂN RÔ-BỐT (HIỂN THỊ TRỰC QUAN BẢNG MẠCH ĐIỀU KHIỂN & PIN NĂNG LƯỢNG) ---
+    const torsoGrad = ctx.createLinearGradient(cx - 66, 122, cx + 66, 246);
     torsoGrad.addColorStop(0, '#F8FAFC');
     torsoGrad.addColorStop(0.6, '#CBD5E1');
     torsoGrad.addColorStop(1, '#94A3B8');
-    drawRoundedRect(ctx, cx - 64, 128, 128, 122, 18, torsoGrad, '#334155', 2.4);
+    drawRoundedRect(ctx, cx - 66, 122, 132, 124, 18, torsoGrad, '#334155', 2.4);
 
-    // Khoang bóc tách bên trong ngực: BỘ ĐIỀU KHIỂN (CONTROLLER) ở trên
-    drawRoundedRect(ctx, cx - 46, 140, 92, 50, 8, '#0F172A', '#0EA5E9', 2);
-    // Vi mạch & Chip CPU phát sáng
-    drawRoundedRect(ctx, cx - 18, 151, 36, 28, 4, '#0284C7', '#38BDF8', 1.5);
-    ctx.fillStyle = '#E0F2FE';
-    ctx.font = 'bold 9px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('CPU / AI', cx, 166);
-    // Đường mạch điện tử
+    // Khoang ngực: Vi mạch điều khiển
+    drawRoundedRect(ctx, cx - 46, 134, 92, 50, 8, '#0F172A', '#0EA5E9', 2);
+    drawRoundedRect(ctx, cx - 18, 145, 36, 28, 4, '#0284C7', '#38BDF8', 1.5);
     ctx.strokeStyle = '#38BDF8';
-    ctx.lineWidth = 1.3;
+    ctx.lineWidth = 1.5;
     [-34, -26, 26, 34].forEach(px => {
         ctx.beginPath();
-        ctx.moveTo(cx + px, 148);
-        ctx.lineTo(cx + px, 182);
+        ctx.moveTo(cx + px, 142);
+        ctx.lineTo(cx + px, 176);
         ctx.stroke();
     });
 
-    // Khoang bóc tách phía dưới bụng: NGUỒN ĐIỆN / PIN (POWER)
-    drawRoundedRect(ctx, cx - 44, 198, 88, 38, 6, '#1E293B', '#F59E0B', 1.8);
-    // Các cell pin năng lượng
+    // Khoang bụng: Khối pin năng lượng xanh lá
+    drawRoundedRect(ctx, cx - 44, 192, 88, 38, 6, '#1E293B', '#F59E0B', 1.8);
     [-26, -8, 10, 28].forEach(bx => {
-        drawRoundedRect(ctx, cx + bx - 6, 205, 12, 24, 3, '#22C55E', '#86EFAC', 1);
+        drawRoundedRect(ctx, cx + bx - 6, 199, 12, 24, 3, '#22C55E', '#86EFAC', 1);
     });
 
-    // --- 3. CÁNH TAY & BỘ PHẬN CHẤP HÀNH (ACTUATORS & END EFFECTORS) ---
-    // Khớp vai trái & phải (Động cơ Servo)
-    [-76, 60].forEach(sx => {
-        drawRoundedRect(ctx, cx + sx, 134, 16, 28, 6, '#0284C7', '#1E3A8A', 1.8);
+    // --- 3. CÁNH TAY CƠ KHÍ & TAY KẸP ---
+    [-78, 62].forEach(sx => {
+        drawRoundedRect(ctx, cx + sx, 128, 16, 28, 6, '#0284C7', '#1E3A8A', 1.8);
     });
 
-    // Cánh tay trái bóc tách khớp truyền động
-    drawRoundedRect(ctx, cx - 102, 140, 26, 56, 10, '#E2E8F0', '#334155', 2);
-    ctx.beginPath();
-    ctx.arc(cx - 89, 202, 11, 0, Math.PI * 2);
-    ctx.fillStyle = '#F59E0B'; // Khớp khuỷu tay truyền động
-    ctx.fill();
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-    drawRoundedRect(ctx, cx - 101, 212, 24, 46, 8, '#CBD5E1', '#334155', 2);
-
-    // Kẹp gắp cơ khí bên trái (End Effector)
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - 95, 258);
-    ctx.lineTo(cx - 105, 276);
-    ctx.lineTo(cx - 96, 286);
-    ctx.moveTo(cx - 83, 258);
-    ctx.lineTo(cx - 73, 276);
-    ctx.lineTo(cx - 82, 286);
-    ctx.stroke();
-
-    // Cánh tay phải
-    drawRoundedRect(ctx, cx + 76, 140, 26, 56, 10, '#E2E8F0', '#334155', 2);
-    ctx.beginPath();
-    ctx.arc(cx + 89, 202, 11, 0, Math.PI * 2);
-    ctx.fillStyle = '#F59E0B';
-    ctx.fill();
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-    drawRoundedRect(ctx, cx + 77, 212, 24, 46, 8, '#CBD5E1', '#334155', 2);
-
-    // Bàn tay kẹp cơ khí bên phải
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(cx + 83, 258);
-    ctx.lineTo(cx + 73, 276);
-    ctx.lineTo(cx + 82, 286);
-    ctx.moveTo(cx + 95, 258);
-    ctx.lineTo(cx + 105, 276);
-    ctx.lineTo(cx + 96, 286);
-    ctx.stroke();
-
-    // --- 4. CHÂN & BÁNH XE DI CHUYỂN (LOCOMOTION) ---
-    // Khớp hông
-    drawRoundedRect(ctx, cx - 48, 250, 96, 18, 6, '#475569', '#1E293B', 2);
-
-    // Hai chân cơ khí kết hợp bánh xe di chuyển
-    [-32, 32].forEach(lx => {
-        drawRoundedRect(ctx, cx + lx - 16, 268, 32, 68, 8, '#E2E8F0', '#334155', 2);
-        // Lò xo giảm xóc & mô-tơ chân
-        drawRoundedRect(ctx, cx + lx - 10, 284, 20, 34, 4, '#0284C7', '#1E3A8A', 1.4);
-        // Đế bàn chân & bánh xe lăn
-        drawRoundedRect(ctx, cx + lx - 22, 336, 44, 24, 8, '#334155', '#0F172A', 2);
+    // Tay trái & tay phải
+    [-1, 1].forEach(dir => {
+        const armX = dir === -1 ? cx - 104 : cx + 78;
+        const jointX = dir === -1 ? cx - 91 : cx + 91;
+        drawRoundedRect(ctx, armX, 134, 26, 56, 10, '#E2E8F0', '#334155', 2);
         ctx.beginPath();
-        ctx.arc(cx + lx - 14, 358, 9, 0, Math.PI * 2);
-        ctx.arc(cx + lx + 14, 358, 9, 0, Math.PI * 2);
+        ctx.arc(jointX, 196, 11, 0, Math.PI * 2);
+        ctx.fillStyle = '#F59E0B';
+        ctx.fill();
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+        drawRoundedRect(ctx, armX + 1, 206, 24, 46, 8, '#CBD5E1', '#334155', 2);
+
+        // Kẹp cơ khí
+        ctx.strokeStyle = '#1E293B';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(jointX - 6, 252);
+        ctx.lineTo(jointX - 16, 270);
+        ctx.lineTo(jointX - 7, 280);
+        ctx.moveTo(jointX + 6, 252);
+        ctx.lineTo(jointX + 16, 270);
+        ctx.lineTo(jointX + 7, 280);
+        ctx.stroke();
+    });
+
+    // --- 4. CHÂN & BÁNH XE DI CHUYỂN ---
+    drawRoundedRect(ctx, cx - 48, 246, 96, 18, 6, '#475569', '#1E293B', 2);
+    [-32, 32].forEach(lx => {
+        drawRoundedRect(ctx, cx + lx - 16, 264, 32, 66, 8, '#E2E8F0', '#334155', 2);
+        drawRoundedRect(ctx, cx + lx - 10, 280, 20, 32, 4, '#0284C7', '#1E3A8A', 1.4);
+        drawRoundedRect(ctx, cx + lx - 22, 330, 44, 24, 8, '#334155', '#0F172A', 2);
+        ctx.beginPath();
+        ctx.arc(cx + lx - 14, 352, 9, 0, Math.PI * 2);
+        ctx.arc(cx + lx + 14, 352, 9, 0, Math.PI * 2);
         ctx.fillStyle = '#1E293B';
         ctx.fill();
         ctx.strokeStyle = '#94A3B8';
@@ -443,102 +379,38 @@ const drawRobotAnatomyScene = (ctx: CanvasRenderingContext2D) => {
         ctx.stroke();
     });
 
-    // --- 5. HỆ THỐNG NHÃN CHỈ DẪN BÓC TÁCH CÁC BỘ PHẬN CỦA RÔ-BỐT ---
-    // Bên trái:
-    drawTechnicalCallout(
-        ctx,
-        cx - 38,
-        78,
-        242,
-        66,
-        '1. Đầu & Hệ thống cảm biến',
-        'Camera, cảm biến nhận biết môi trường',
-        'right',
-        '#0284C7'
-    );
-    drawTechnicalCallout(
-        ctx,
-        cx - 89,
-        166,
-        242,
-        142,
-        '2. Khung cơ khí & Cánh tay',
-        'Nâng đỡ và định hình cấu trúc rô-bốt',
-        'right',
-        '#2563EB'
-    );
-    drawTechnicalCallout(
-        ctx,
-        cx - 89,
-        202,
-        242,
-        216,
-        '3. Hệ thống truyền động',
-        'Động cơ, khớp xoay giúp rô-bốt cử động',
-        'right',
-        '#D97706'
-    );
-    drawTechnicalCallout(
-        ctx,
-        cx - 90,
-        276,
-        242,
-        292,
-        '4. Bộ phận chấp hành (Tay kẹp)',
-        'Cầm, nắm và thao tác với đồ vật',
-        'right',
-        '#0D9488'
-    );
+    // --- 5. CÁC LINH KIỆN RỜI ĐẶT TRỰC QUAN TRÊN MẶT BÀN BÊN TRÁI & BÊN PHẢI ---
+    // Bên trái: Cụm cảm biến siêu âm & động cơ bánh răng đặt trên mặt bàn
+    drawRoundedRect(ctx, 64, 248, 148, 92, 12, '#FFFFFF', '#0284C7', 2);
+    drawRoundedRect(ctx, 84, 266, 108, 42, 8, '#0EA5E9', '#0369A1', 1.8);
+    ctx.beginPath();
+    ctx.arc(114, 287, 13, 0, Math.PI * 2);
+    ctx.arc(162, 287, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#E0F2FE';
+    ctx.fill();
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineWidth = 2;
+    ctx.stroke();
 
-    // Bên phải:
-    drawTechnicalCallout(
-        ctx,
-        cx + 30,
-        164,
-        518,
-        104,
-        '5. Bộ điều khiển (Não bộ)',
-        'Vi mạch xử lý thông tin và điều khiển',
-        'left',
-        '#0284C7'
-    );
-    drawTechnicalCallout(
-        ctx,
-        cx + 30,
-        216,
-        518,
-        196,
-        '6. Nguồn điện (Pin / Ắc-quy)',
-        'Cung cấp năng lượng cho rô-bốt hoạt động',
-        'left',
-        '#16A34A'
-    );
-    drawTechnicalCallout(
-        ctx,
-        cx + 46,
-        348,
-        518,
-        312,
-        '7. Bộ phận di chuyển',
-        'Chân máy và bánh xe giúp rô-bốt đi lại',
-        'left',
-        '#4F46E5'
-    );
+    // Bên phải: Bảng mạch điều khiển & khối Pin rời đặt trên mặt bàn
+    drawRoundedRect(ctx, 548, 248, 148, 92, 12, '#FFFFFF', '#16A34A', 2);
+    drawRoundedRect(ctx, 566, 264, 62, 54, 6, '#15803D', '#14532D', 1.8);
+    drawRoundedRect(ctx, 580, 276, 34, 30, 4, '#0F172A', '#4ADE80', 1.2);
+    drawRoundedRect(ctx, 638, 268, 42, 48, 6, '#F59E0B', '#B45309', 1.8);
+    drawRoundedRect(ctx, 648, 262, 22, 6, 2, '#94A3B8');
 };
 
 /**
- * 2. HÌNH ẢNH CẬN CẢNH BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT TIỂU HỌC
- * Khớp chuẩn mực với yêu cầu: "Giáo viên yêu cầu các nhóm mở bộ lắp ghép mô hình kỹ thuật"
+ * 2. HÌNH ẢNH CẬN CẢNH BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT TIỂU HỌC ĐẶT TRÊN BÀN GỖ
+ * (Hoàn toàn trực quan: Hộp nhựa chia ngăn đựng chi tiết lắp ghép + Tua-vít + Cờ-lê đặt trên mặt bàn gỗ)
  */
 const drawTechnicalAssemblyKitScene = (ctx: CanvasRenderingContext2D) => {
-    // Mặt bàn gỗ ấm áp thực tế
     const woodGrad = ctx.createLinearGradient(0, 0, 760, 420);
     woodGrad.addColorStop(0, '#E7CBA9');
     woodGrad.addColorStop(0.5, '#DEB887');
     woodGrad.addColorStop(1, '#CFA36E');
     drawRoundedRect(ctx, 4, 4, 752, 412, 12, woodGrad, '#8B5A2B', 2);
 
-    // Vân gỗ nhẹ
     ctx.strokeStyle = 'rgba(120, 63, 4, 0.12)';
     ctx.lineWidth = 1.5;
     for (let y = 28; y < 405; y += 34) {
@@ -548,27 +420,24 @@ const drawTechnicalAssemblyKitScene = (ctx: CanvasRenderingContext2D) => {
         ctx.stroke();
     }
 
-    // --- HỘP NHỰA CHIA NGĂN ĐỰNG BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT (BÊN TRÁI & GIỮA) ---
-    // Bóng đổ hộp
-    drawRoundedRect(ctx, 32, 34, 496, 328, 14, 'rgba(15, 23, 42, 0.22)');
-    // Vỏ hộp nhựa xanh/trắng
-    drawRoundedRect(ctx, 26, 26, 492, 324, 12, '#F8FAFC', '#0284C7', 3);
-    // Viền chia ngăn bên trong hộp
-    drawRoundedRect(ctx, 36, 36, 472, 304, 8, '#E2E8F0', '#64748B', 2);
+    // Bóng đổ & Vỏ hộp nhựa chia ngăn đựng bộ lắp ghép
+    drawRoundedRect(ctx, 36, 36, 516, 356, 14, 'rgba(15, 23, 42, 0.22)');
+    drawRoundedRect(ctx, 28, 28, 512, 352, 12, '#F8FAFC', '#0284C7', 3);
+    drawRoundedRect(ctx, 40, 40, 488, 328, 8, '#E2E8F0', '#64748B', 2);
 
-    // NGĂN 1 (Trái trên): Các thanh thẳng, thanh chữ U, thanh chữ L có lỗ (Perforated Beams)
-    drawRoundedRect(ctx, 44, 44, 224, 140, 6, '#FFFFFF', '#94A3B8', 1.5);
+    // NGĂN 1: Các thanh thẳng, thanh chữ U, thanh chữ L có lỗ
+    drawRoundedRect(ctx, 48, 48, 234, 154, 6, '#FFFFFF', '#94A3B8', 1.5);
     const beamColors = [
-        { y: 58, w: 196, col: '#2563EB', holes: 9 },
-        { y: 84, w: 172, col: '#16A34A', holes: 8 },
-        { y: 110, w: 196, col: '#DC2626', holes: 9 },
-        { y: 136, w: 148, col: '#F59E0B', holes: 7 }
+        { y: 64, w: 204, col: '#2563EB', holes: 9 },
+        { y: 94, w: 180, col: '#16A34A', holes: 8 },
+        { y: 124, w: 204, col: '#DC2626', holes: 9 },
+        { y: 154, w: 156, col: '#F59E0B', holes: 7 }
     ];
     beamColors.forEach(b => {
-        drawRoundedRect(ctx, 56, b.y, b.w, 18, 5, b.col, '#1E293B', 1.2);
+        drawRoundedRect(ctx, 60, b.y, b.w, 20, 5, b.col, '#1E293B', 1.2);
         for (let i = 0; i < b.holes; i++) {
             ctx.beginPath();
-            ctx.arc(68 + i * 21, b.y + 9, 4, 0, Math.PI * 2);
+            ctx.arc(74 + i * 22, b.y + 10, 4, 0, Math.PI * 2);
             ctx.fillStyle = '#F8FAFC';
             ctx.fill();
             ctx.strokeStyle = '#334155';
@@ -576,10 +445,9 @@ const drawTechnicalAssemblyKitScene = (ctx: CanvasRenderingContext2D) => {
             ctx.stroke();
         }
     });
-    drawBadgeLabel(ctx, 'Thanh thẳng • Thanh chữ U, L', 156, 171, '#EFF6FF', '#2563EB', '#1E3A8A');
 
-    // NGĂN 2 (Giữa trên): Bánh răng, bánh xe, ròng rọc (Gears, Wheels, Pulleys)
-    drawRoundedRect(ctx, 276, 44, 224, 140, 6, '#FFFFFF', '#94A3B8', 1.5);
+    // NGĂN 2: Bánh răng, bánh xe, ròng rọc
+    drawRoundedRect(ctx, 290, 48, 230, 154, 6, '#FFFFFF', '#94A3B8', 1.5);
     const drawGear = (gx: number, gy: number, r: number, color: string) => {
         ctx.save();
         ctx.fillStyle = color;
@@ -603,14 +471,13 @@ const drawTechnicalAssemblyKitScene = (ctx: CanvasRenderingContext2D) => {
         ctx.stroke();
         ctx.restore();
     };
-    drawGear(322, 92, 24, '#EF4444');
-    drawGear(382, 86, 19, '#F59E0B');
-    drawGear(358, 130, 17, '#3B82F6');
+    drawGear(338, 100, 26, '#EF4444');
+    drawGear(402, 94, 20, '#F59E0B');
+    drawGear(374, 148, 19, '#3B82F6');
 
-    // Bánh xe cao su & vành nhựa
     [
-        { x: 446, y: 82, r: 24 },
-        { x: 454, y: 132, r: 20 }
+        { x: 468, y: 92, r: 26 },
+        { x: 472, y: 152, r: 22 }
     ].forEach(w => {
         ctx.beginPath();
         ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2);
@@ -625,22 +492,17 @@ const drawTechnicalAssemblyKitScene = (ctx: CanvasRenderingContext2D) => {
         ctx.fillStyle = '#334155';
         ctx.fill();
     });
-    drawBadgeLabel(ctx, 'Bánh xe • Bánh răng • Ròng rọc', 388, 171, '#FEF3C7', '#D97706', '#92400E');
 
-    // NGĂN 3 (Trái dưới): Ốc vít, đai ốc, vòng đệm, trục thép (Screws, Nuts, Axles)
-    drawRoundedRect(ctx, 44, 192, 146, 140, 6, '#FFFFFF', '#94A3B8', 1.5);
-    // Vẽ các ốc vít và đai ốc kim loại
+    // NGĂN 3: Ốc vít, đai ốc, vòng đệm, trục thép
+    drawRoundedRect(ctx, 48, 210, 234, 150, 6, '#FFFFFF', '#94A3B8', 1.5);
     for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 3; c++) {
-            const sx = 68 + c * 38;
-            const sy = 216 + r * 30;
-            // Thân vít
-            drawRoundedRect(ctx, sx - 8, sy - 4, 18, 7, 2, '#94A3B8', '#475569', 1);
-            // Mũ vít
-            drawRoundedRect(ctx, sx - 12, sy - 7, 6, 13, 2, '#64748B', '#334155', 1);
-            // Đai ốc lục giác
+        for (let c = 0; c < 4; c++) {
+            const sx = 76 + c * 52;
+            const sy = 240 + r * 38;
+            drawRoundedRect(ctx, sx - 8, sy - 4, 20, 8, 2, '#94A3B8', '#475569', 1);
+            drawRoundedRect(ctx, sx - 13, sy - 8, 6, 15, 2, '#64748B', '#334155', 1);
             ctx.beginPath();
-            ctx.arc(sx + 16, sy, 5.5, 0, Math.PI * 2);
+            ctx.arc(sx + 20, sy, 6, 0, Math.PI * 2);
             ctx.fillStyle = '#CBD5E1';
             ctx.fill();
             ctx.strokeStyle = '#475569';
@@ -648,168 +510,138 @@ const drawTechnicalAssemblyKitScene = (ctx: CanvasRenderingContext2D) => {
             ctx.stroke();
         }
     }
-    drawBadgeLabel(ctx, 'Ốc vít • Đai ốc • Trục', 117, 316, '#F1F5F9', '#475569', '#0F172A');
 
-    // NGĂN 4 (Giữa dưới): Tấm lớn, tấm nhỏ, hộp pin & động cơ mini
-    drawRoundedRect(ctx, 198, 192, 146, 140, 6, '#FFFFFF', '#94A3B8', 1.5);
-    // Tấm nền có lỗ
-    drawRoundedRect(ctx, 212, 204, 118, 66, 6, '#22C55E', '#15803D', 1.5);
-    for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 5; c++) {
+    // NGĂN 4: Tấm lớn, tấm nhỏ có lỗ
+    drawRoundedRect(ctx, 290, 210, 230, 150, 6, '#FFFFFF', '#94A3B8', 1.5);
+    drawRoundedRect(ctx, 314, 228, 182, 112, 8, '#22C55E', '#15803D', 1.8);
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 6; c++) {
             ctx.beginPath();
-            ctx.arc(228 + c * 21, 218 + r * 19, 3.5, 0, Math.PI * 2);
+            ctx.arc(336 + c * 27, 248 + r * 24, 4, 0, Math.PI * 2);
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
         }
     }
-    // Mô-tơ / Hộp điều khiển nhỏ
-    drawRoundedRect(ctx, 224, 276, 94, 24, 5, '#0284C7', '#1E3A8A', 1.2);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('MÔ-TƠ & HỘP PIN', 271, 288);
-    drawBadgeLabel(ctx, 'Tấm nền • Động cơ', 271, 316, '#DCFCE7', '#16A34A', '#14532D');
 
-    // NGĂN 5 (Phải dưới trong hộp): Tua-vít (Screwdriver) và Cờ-lê (Wrench)
-    drawRoundedRect(ctx, 352, 192, 148, 140, 6, '#FFFFFF', '#94A3B8', 1.5);
-    // Tua-vít cán đỏ
-    drawRoundedRect(ctx, 368, 214, 54, 18, 7, '#DC2626', '#991B1B', 1.5);
-    drawRoundedRect(ctx, 422, 220, 60, 6, 2, '#94A3B8', '#475569', 1.2);
-    // Cờ-lê thép
-    drawRoundedRect(ctx, 378, 260, 96, 12, 5, '#CBD5E1', '#475569', 1.5);
+    // --- DỤNG CỤ TUA-VÍT & CỜ-LÊ ĐẶT TRỰC QUAN BÊN PHẢI HỘP TRÊN MẶT BÀN GỖ ---
+    // Tua-vít 3D cán đỏ lớn đặt dọc
+    drawRoundedRect(ctx, 592, 64, 44, 118, 16, '#DC2626', '#991B1B', 2.2);
+    drawRoundedRect(ctx, 600, 78, 8, 88, 4, '#EF4444');
+    drawRoundedRect(ctx, 608, 182, 12, 136, 3, '#CBD5E1', '#475569', 1.8);
     ctx.beginPath();
-    ctx.arc(376, 266, 12, 0.4, Math.PI * 2 - 0.4);
-    ctx.arc(476, 266, 10, 0, Math.PI * 2);
+    ctx.moveTo(605, 318);
+    ctx.lineTo(623, 318);
+    ctx.lineTo(618, 342);
+    ctx.lineTo(610, 342);
+    ctx.closePath();
+    ctx.fillStyle = '#64748B';
+    ctx.fill();
+
+    // Cờ-lê thép 3D đặt cạnh tua-vít
+    drawRoundedRect(ctx, 676, 104, 26, 210, 10, '#E2E8F0', '#475569', 2.2);
+    ctx.beginPath();
+    ctx.arc(689, 96, 26, 0.35, Math.PI * 2 - 0.35);
+    ctx.arc(689, 322, 22, 0, Math.PI * 2);
     ctx.fillStyle = '#CBD5E1';
     ctx.fill();
     ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
-    drawBadgeLabel(ctx, 'Tua-vít & Cờ-lê', 426, 316, '#FEE2E2', '#DC2626', '#991B1B');
-
-    // --- SÁCH HƯỚNG DẪN LẮP GHÉP & CHI TIẾT ĐANG THỰC HÀNH (BÊN PHẢI HỘP) ---
-    drawRoundedRect(ctx, 536, 36, 202, 220, 8, '#FFFFFF', '#475569', 2);
-    drawRoundedRect(ctx, 546, 46, 182, 28, 5, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 12px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('BẢN HƯỚNG DẪN LẮP GHÉP', 637, 60);
-
-    // Hình minh họa các bước trong tờ hướng dẫn
-    drawRoundedRect(ctx, 554, 84, 166, 74, 6, '#F0F9FF', '#38BDF8', 1.2);
-    // Vẽ sơ đồ lắp bánh xe vào thanh thẳng
-    drawRoundedRect(ctx, 572, 108, 86, 14, 4, '#2563EB', '#1E3A8A', 1);
     ctx.beginPath();
-    ctx.arc(678, 115, 18, 0, Math.PI * 2);
-    ctx.fillStyle = '#F59E0B';
+    ctx.arc(689, 322, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#CFA36E';
     ctx.fill();
-    ctx.strokeStyle = '#1E293B';
-    ctx.stroke();
-    ctx.fillStyle = '#0369A1';
-    ctx.font = 'bold 11px Arial';
-    ctx.fillText('Bước 1: Chọn chi tiết & dụng cụ', 637, 146);
-
-    drawRoundedRect(ctx, 554, 168, 166, 74, 6, '#F0FDF4', '#4ADE80', 1.2);
-    ctx.fillStyle = '#15803D';
-    ctx.font = 'bold 11.5px "Times New Roman", Arial';
-    ctx.fillText('Bước 2: Lắp ghép từng bộ phận', 637, 192);
-    ctx.fillStyle = '#334155';
-    ctx.font = '11px "Times New Roman", Arial';
-    ctx.fillText('Dùng tua-vít và cờ-lê vặn chặt', 637, 212);
-    ctx.fillText('ốc vít với đai ốc đúng vị trí.', 637, 228);
-
-    // Dụng cụ Tua-vít & Cờ-lê đặt bên ngoài mặt bàn phía dưới để học sinh dễ quan sát
-    drawRoundedRect(ctx, 536, 272, 202, 78, 10, 'rgba(255,255,255,0.92)', '#D97706', 1.8);
-    ctx.fillStyle = '#92400E';
-    ctx.font = 'bold 12px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT', 637, 294);
-    ctx.fillStyle = '#334155';
-    ctx.font = '11.5px "Times New Roman", Arial';
-    ctx.fillText('• Hộp đựng phân ngăn các chi tiết', 637, 314);
-    ctx.fillText('• Dụng cụ: Tua-vít, cờ-lê, ốc vít', 637, 332);
-
-    // Thanh nhãn tổng quan dưới cùng trên mặt bàn
-    drawRoundedRect(ctx, 26, 362, 712, 38, 8, 'rgba(15, 23, 42, 0.86)', '#38BDF8', 1.5);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 13px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-        'HỘP BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT TIỂU HỌC (ĐẦY ĐỦ CÁC NGĂN CHI TIẾT, TUA-VÍT, CỜ-LÊ & HƯỚNG DẪN)',
-        382,
-        381
-    );
 };
 
 /**
- * 3. HÌNH ẢNH MÔ HÌNH KỸ THUẬT ĐÃ LẮP GHÉP (XE CẦN CẨU, XE TẢI, CỐI XAY GIÓ, ĐIỆN MẶT TRỜI, CẦU VƯỢT, XÍCH ĐU, CÂN...)
+ * 3. HÌNH ẢNH MÔ HÌNH KỸ THUẬT ĐÃ LẮP GHÉP ĐẶT TRÊN MẶT BÀN GỖ
+ * (Hoàn toàn trực quan 3D: Mô hình máy phát điện gió hoặc mô hình xe cần cẩu lắp ghép trên bàn gỗ, không có nhánh mindmap)
  */
-const drawAssembledTechnicalModelScene = (ctx: CanvasRenderingContext2D, primaryLower: string, cleanDesc: string) => {
+const drawAssembledTechnicalModelScene = (ctx: CanvasRenderingContext2D, primaryLower: string, _cleanDesc: string) => {
     const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
-    bgGrad.addColorStop(0, '#F8FAFC');
-    bgGrad.addColorStop(1, '#E2E8F0');
-    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#64748B', 2);
+    bgGrad.addColorStop(0, '#F0F9FF');
+    bgGrad.addColorStop(0.7, '#E0F2FE');
+    bgGrad.addColorStop(1, '#BAE6FD');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
 
     const isWindOrSolar =
         primaryLower.includes('gió') ||
         primaryLower.includes('mặt trời') ||
         primaryLower.includes('năng lượng');
 
-    // Mặt bàn kỹ thuật
-    drawRoundedRect(ctx, 20, 330, 720, 68, 8, '#CBD5E1', '#64748B', 1.5);
+    // Mặt bàn gỗ thực hành
+    const tableGrad = ctx.createLinearGradient(0, 316, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 316, 736, 90, 8, tableGrad, '#78350F', 1.5);
 
     if (isWindOrSolar) {
-        // Vẽ Mô hình Máy phát điện gió / Điện mặt trời lắp ghép
-        // Chân đế
-        drawRoundedRect(ctx, 300, 308, 160, 24, 6, '#2563EB', '#1E3A8A', 2);
+        // Bóng đổ trên mặt bàn
+        ctx.beginPath();
+        ctx.ellipse(380, 354, 125, 16, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fill();
+
+        // Chân đế lắp ghép
+        drawRoundedRect(ctx, 286, 318, 188, 28, 6, '#2563EB', '#1E3A8A', 2.2);
         // Cột trụ thanh thẳng có lỗ
-        drawRoundedRect(ctx, 368, 130, 24, 180, 4, '#16A34A', '#14532D', 2);
-        for (let y = 146; y < 300; y += 22) {
+        drawRoundedRect(ctx, 366, 126, 28, 194, 4, '#16A34A', '#14532D', 2.2);
+        for (let y = 144; y < 306; y += 22) {
             ctx.beginPath();
-            ctx.arc(380, y, 4, 0, Math.PI * 2);
+            ctx.arc(380, y, 4.5, 0, Math.PI * 2);
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
         }
-        // Hộp tuabin & cánh quạt
-        drawRoundedRect(ctx, 352, 108, 56, 34, 8, '#F59E0B', '#B45309', 2);
+        // Hộp tuabin & 3 cánh quạt lớn
+        drawRoundedRect(ctx, 348, 102, 64, 38, 8, '#F59E0B', '#B45309', 2.2);
         [0, 120, 240].forEach(deg => {
             ctx.save();
-            ctx.translate(380, 125);
+            ctx.translate(380, 121);
             ctx.rotate((deg * Math.PI) / 180);
-            drawRoundedRect(ctx, -8, -88, 16, 78, 8, '#38BDF8', '#0284C7', 1.8);
+            drawRoundedRect(ctx, -9, -96, 18, 86, 8, '#38BDF8', '#0284C7', 2);
             ctx.restore();
         });
         ctx.beginPath();
-        ctx.arc(380, 125, 12, 0, Math.PI * 2);
+        ctx.arc(380, 121, 14, 0, Math.PI * 2);
         ctx.fillStyle = '#DC2626';
         ctx.fill();
 
-        drawTechnicalCallout(ctx, 380, 70, 230, 80, '1. Cánh quạt & Rô-to', 'Quay khi có luồng gió tác động', 'right', '#0284C7');
-        drawTechnicalCallout(ctx, 380, 210, 230, 200, '2. Trụ đỡ lắp ghép', 'Gồm các thanh thẳng bắt ốc vít', 'right', '#16A34A');
-        drawTechnicalCallout(ctx, 400, 125, 520, 130, '3. Hộp động cơ phát điện', 'Chuyển đổi cơ năng thành điện năng', 'left', '#D97706');
-        drawTechnicalCallout(ctx, 430, 318, 520, 280, '4. Chân đế giữ thăng bằng', 'Cố định chắc chắn mô hình trên mặt phẳng', 'left', '#2563EB');
+        // Đèn LED phát sáng kiểm tra dòng điện đặt cạnh chân đế
+        drawRoundedRect(ctx, 510, 294, 76, 46, 8, '#1E293B', '#334155', 2);
+        ctx.beginPath();
+        ctx.arc(548, 276, 16, 0, Math.PI * 2);
+        ctx.fillStyle = '#FEF08A';
+        ctx.fill();
+        ctx.strokeStyle = '#EAB308';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
     } else {
-        // Vẽ Mô hình Xe kỹ thuật / Xe cần cẩu lắp ghép bằng các thanh kim loại đục lỗ và bánh xe
+        // Bóng đổ mô hình xe kỹ thuật trên mặt bàn
+        ctx.beginPath();
+        ctx.ellipse(380, 348, 175, 18, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fill();
+
         // Khung gầm xe (Thanh thẳng dài màu xanh)
-        drawRoundedRect(ctx, 250, 244, 260, 24, 6, '#2563EB', '#1E3A8A', 2);
-        for (let x = 268; x <= 492; x += 24) {
+        drawRoundedRect(ctx, 230, 256, 300, 28, 6, '#2563EB', '#1E3A8A', 2.2);
+        for (let x = 250; x <= 510; x += 26) {
             ctx.beginPath();
-            ctx.arc(x, 256, 4, 0, Math.PI * 2);
+            ctx.arc(x, 270, 4.5, 0, Math.PI * 2);
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
         }
-        // Cabin & Giá đỡ (Thanh chữ U màu xanh lá & đỏ)
-        drawRoundedRect(ctx, 266, 168, 88, 76, 8, '#16A34A', '#14532D', 2);
-        drawRoundedRect(ctx, 278, 180, 64, 40, 4, '#E0F2FE', '#0284C7', 1.5);
+        // Cabin & Giá đỡ (Thanh chữ U màu xanh lá)
+        drawRoundedRect(ctx, 248, 172, 102, 84, 8, '#16A34A', '#14532D', 2.2);
+        drawRoundedRect(ctx, 262, 186, 74, 46, 5, '#E0F2FE', '#0284C7', 1.8);
 
         // Cần cẩu / Giá nâng nghiêng (Thanh thẳng màu vàng + ròng rọc)
         ctx.save();
-        ctx.translate(380, 244);
+        ctx.translate(384, 256);
         ctx.rotate(-0.55);
-        drawRoundedRect(ctx, 0, -14, 170, 20, 5, '#F59E0B', '#B45309', 2);
-        for (let i = 16; i < 160; i += 22) {
+        drawRoundedRect(ctx, 0, -16, 190, 24, 5, '#F59E0B', '#B45309', 2.2);
+        for (let i = 18; i < 180; i += 24) {
             ctx.beginPath();
-            ctx.arc(i, -4, 3.5, 0, Math.PI * 2);
+            ctx.arc(i, -4, 4, 0, Math.PI * 2);
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
         }
@@ -817,126 +649,128 @@ const drawAssembledTechnicalModelScene = (ctx: CanvasRenderingContext2D, primary
 
         // Ròng rọc & dây móc cẩu ở đỉnh cần
         ctx.beginPath();
-        ctx.arc(516, 152, 14, 0, Math.PI * 2);
+        ctx.arc(536, 152, 16, 0, Math.PI * 2);
         ctx.fillStyle = '#DC2626';
         ctx.fill();
         ctx.strokeStyle = '#1E293B';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.2;
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(516, 166);
-        ctx.lineTo(516, 224);
+        ctx.moveTo(536, 168);
+        ctx.lineTo(536, 232);
         ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.stroke();
-        drawRoundedRect(ctx, 502, 224, 28, 24, 4, '#F97316', '#9A3412', 1.8);
+        drawRoundedRect(ctx, 520, 232, 32, 28, 5, '#F97316', '#9A3412', 2);
 
         // Bánh xe trước & sau
-        [300, 456].forEach(wx => {
+        [292, 468].forEach(wx => {
             ctx.beginPath();
-            ctx.arc(wx, 284, 32, 0, Math.PI * 2);
+            ctx.arc(wx, 302, 38, 0, Math.PI * 2);
             ctx.fillStyle = '#1E293B';
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(wx, 284, 18, 0, Math.PI * 2);
+            ctx.arc(wx, 302, 22, 0, Math.PI * 2);
             ctx.fillStyle = '#FACC15';
             ctx.fill();
             ctx.beginPath();
-            ctx.arc(wx, 284, 6, 0, Math.PI * 2);
+            ctx.arc(wx, 302, 7, 0, Math.PI * 2);
             ctx.fillStyle = '#475569';
             ctx.fill();
         });
-
-        drawTechnicalCallout(ctx, 290, 190, 225, 95, '1. Khung cabin & Giá đỡ', 'Lắp từ các thanh chữ U và tấm nhỏ', 'right', '#16A34A');
-        drawTechnicalCallout(ctx, 290, 256, 225, 190, '2. Khung sàn xe & Mối ghép', 'Các thanh thẳng ghép bằng ốc vít, đai ốc', 'right', '#2563EB');
-        drawTechnicalCallout(ctx, 300, 296, 225, 285, '3. Hệ thống bánh xe & Trục', 'Giúp mô hình di chuyển linh hoạt', 'right', '#D97706');
-        drawTechnicalCallout(ctx, 455, 185, 535, 110, '4. Cần nâng & Ròng rọc', 'Cơ cấu truyền động và nâng vật', 'left', '#DC2626');
     }
-
-    // Nhãn tên mô hình dưới đáy
-    drawRoundedRect(ctx, 40, 344, 680, 42, 8, '#FFFFFF', '#0284C7', 1.5);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 13px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    const shortTitle = wrapCanvasText(ctx, `Mô hình kỹ thuật trực quan: ${cleanDesc}`, 650, 1)[0];
-    ctx.fillText(shortTitle, 380, 365);
 };
 
 /**
- * 4. HÌNH ẢNH CẤU TẠO ĐÈN HỌC / ĐỒ DÙNG ĐIỆN / MẠCH ĐIỆN THỰC TẾ
+ * 4. HÌNH ẢNH CẤU TẠO ĐÈN HỌC / ĐỒ DÙNG ĐIỆN ĐẶT TRỰC QUAN TRÊN BÀN HỌC
+ * (Hoàn toàn trực quan 3D: Đèn học bật sáng trên bàn gỗ cạnh quyển sách mở và hộp bút, không có nhánh mindmap)
  */
 const drawElectricalApplianceOrLampScene = (ctx: CanvasRenderingContext2D) => {
     const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
-    bgGrad.addColorStop(0, '#F8FAFC');
-    bgGrad.addColorStop(1, '#E2E8F0');
+    bgGrad.addColorStop(0, '#1E293B');
+    bgGrad.addColorStop(0.7, '#334155');
+    bgGrad.addColorStop(1, '#475569');
     drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#64748B', 2);
 
-    // Đế đèn học
-    drawRoundedRect(ctx, 290, 326, 170, 34, 14, '#1E293B', '#0F172A', 2);
-    // Công tắc bật/tắt trên đế đèn
-    drawRoundedRect(ctx, 355, 318, 36, 12, 4, '#EF4444', '#991B1B', 1.5);
+    // Mặt bàn gỗ ấm áp
+    const tableGrad = ctx.createLinearGradient(0, 318, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 318, 736, 90, 8, tableGrad, '#78350F', 1.5);
 
-    // Thân đèn uốn cong / khớp xoay
-    ctx.strokeStyle = '#475569';
+    // Chùm sáng vàng ấm chiếu từ chụp đèn xuống trang sách trên bàn
+    ctx.fillStyle = 'rgba(254, 240, 138, 0.28)';
+    ctx.beginPath();
+    ctx.moveTo(415, 168);
+    ctx.lineTo(475, 122);
+    ctx.lineTo(620, 348);
+    ctx.lineTo(330, 348);
+    ctx.closePath();
+    ctx.fill();
+
+    // Đế đèn học 3D
+    ctx.beginPath();
+    ctx.ellipse(355, 350, 96, 16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+    drawRoundedRect(ctx, 270, 314, 170, 34, 14, '#0F172A', '#38BDF8', 2);
+    // Công tắc bật/tắt màu đỏ nổi bật trên đế đèn
+    drawRoundedRect(ctx, 338, 304, 38, 14, 5, '#EF4444', '#FCA5A5', 1.5);
+
+    // Thân đèn uốn cong & khớp xoay
+    ctx.strokeStyle = '#94A3B8';
     ctx.lineWidth = 14;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(335, 326);
-    ctx.lineTo(315, 200);
-    ctx.lineTo(385, 110);
+    ctx.moveTo(315, 314);
+    ctx.lineTo(295, 188);
+    ctx.lineTo(378, 98);
     ctx.stroke();
 
-    // Khớp vặn điều chỉnh
     ctx.beginPath();
-    ctx.arc(315, 200, 11, 0, Math.PI * 2);
+    ctx.arc(295, 188, 12, 0, Math.PI * 2);
     ctx.fillStyle = '#0284C7';
     ctx.fill();
 
-    // Chụp đèn (Shade)
+    // Chụp đèn (Chao đèn)
     ctx.beginPath();
-    ctx.moveTo(370, 95);
-    ctx.lineTo(465, 130);
-    ctx.lineTo(415, 185);
+    ctx.moveTo(364, 82);
+    ctx.lineTo(475, 122);
+    ctx.lineTo(415, 176);
     ctx.closePath();
     ctx.fillStyle = '#0284C7';
     ctx.fill();
-    ctx.strokeStyle = '#1E3A8A';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#38BDF8';
+    ctx.lineWidth = 2.2;
     ctx.stroke();
 
-    // Bóng đèn LED phát sáng
+    // Bóng đèn LED phát sáng rực rỡ bên trong chụp đèn
     ctx.beginPath();
-    ctx.arc(432, 152, 18, 0, Math.PI * 2);
+    ctx.arc(432, 142, 20, 0, Math.PI * 2);
     ctx.fillStyle = '#FEF08A';
     ctx.fill();
-    ctx.strokeStyle = '#EAB308';
+    ctx.strokeStyle = '#FACC15';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Quyển sách mở dưới ánh đèn bên phải
+    drawRoundedRect(ctx, 468, 312, 176, 36, 6, '#FFFFFF', '#0284C7', 2);
+    ctx.beginPath();
+    ctx.moveTo(556, 312);
+    ctx.lineTo(556, 348);
+    ctx.strokeStyle = '#94A3B8';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Chùm sáng chiếu xuống
-    ctx.fillStyle = 'rgba(254, 240, 138, 0.28)';
+    // Ổ cắm điện trên tường & Dây nguồn phích cắm bên trái
+    drawRoundedRect(ctx, 118, 250, 56, 56, 8, '#F8FAFC', '#CBD5E1', 2);
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineWidth = 4.5;
     ctx.beginPath();
-    ctx.moveTo(415, 180);
-    ctx.lineTo(465, 135);
-    ctx.lineTo(540, 350);
-    ctx.lineTo(350, 350);
-    ctx.closePath();
-    ctx.fill();
-
-    // Dây nguồn và phích cắm điện
-    ctx.strokeStyle = '#1E293B';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(290, 344);
-    ctx.bezierCurveTo(230, 350, 220, 310, 180, 325);
+    ctx.moveTo(270, 332);
+    ctx.bezierCurveTo(210, 340, 195, 280, 156, 278);
     ctx.stroke();
-    drawRoundedRect(ctx, 152, 314, 28, 22, 4, '#334155', '#0F172A', 1.5);
-
-    drawTechnicalCallout(ctx, 425, 125, 515, 85, '1. Chụp đèn (Chao đèn)', 'Bảo vệ bóng đèn, tập trung ánh sáng', 'left', '#0284C7');
-    drawTechnicalCallout(ctx, 435, 155, 515, 165, '2. Bóng đèn LED', 'Phát ra ánh sáng dịu, tiết kiệm điện', 'left', '#CA8A04');
-    drawTechnicalCallout(ctx, 315, 200, 235, 150, '3. Thân đèn & Khớp xoay', 'Điều chỉnh độ cao và góc chiếu sáng', 'right', '#475569');
-    drawTechnicalCallout(ctx, 373, 322, 515, 265, '4. Công tắc & Đế đèn', 'Bật/tắt đèn và giữ đèn đứng vững', 'left', '#DC2626');
-    drawTechnicalCallout(ctx, 168, 325, 235, 265, '5. Dây nguồn & Phích cắm', 'Kết nối an toàn với nguồn điện', 'right', '#0F172A');
+    drawRoundedRect(ctx, 134, 266, 28, 24, 5, '#334155', '#0F172A', 1.8);
 };
 
 /**
@@ -1144,386 +978,227 @@ const drawPlantAndGardeningScene = (ctx: CanvasRenderingContext2D, subjectLower:
 };
 
 /**
- * 6. VẼ GIAO DIỆN TRANG WEB MẪU / HÌNH 7 (THÔNG TIN TRÊN TRANG WEB: VĂN BẢN, HÌNH ẢNH, VIDEO, ÂM THANH)
+ * 6. HÌNH ẢNH TRỰC QUAN MÀN HÌNH MÁY TÍNH HIỂN THỊ TRANG WEB ĐA PHƯƠNG TIỆN (VĂN BẢN, HÌNH ẢNH, VIDEO, ÂM THANH)
+ * (Vẽ trực tiếp màn hình máy tính 3D đặt trên bàn gỗ hiển thị trang web trực quan - tuyệt đối không vẽ infographic hay mindmap)
  */
 const drawWebpageInformationScene = (
     ctx: CanvasRenderingContext2D,
     primaryText: string,
     primaryLower: string
 ) => {
-    const figMatch = primaryText.match(/hình\s*(\d+[a-z]?)/i);
-    const exMatch = primaryText.match(/bài\s*tập\s*(\d+)/i);
     const hasNumberedPositions =
         /đánh\s*số|vị\s*trí\s*(số\s*)?\d|số\s*1\s*,\s*2|1\s*,\s*2\s*,\s*3|\(1\)|\(2\)|hình\s*7/i.test(primaryLower);
-    const isClassificationExercise =
-        /phân\s*loại|chỉ\s*ra\s*đâu\s*là|bài\s*tập|trang\s*web\s*mẫu|thành\s*phần\s*khác\s*nhau/i.test(primaryLower);
 
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 36, 10, '#0284C7');
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F0F9FF');
+    bgGrad.addColorStop(0.75, '#E0F2FE');
+    bgGrad.addColorStop(1, '#BAE6FD');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
+
+    // Mặt bàn gỗ 3D phía dưới
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#92400E');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
+
+    // Chân đế màn hình máy tính
+    ctx.beginPath();
+    ctx.ellipse(380, 366, 98, 15, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+    ctx.fill();
+    drawRoundedRect(ctx, 352, 306, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 348, 168, 16, 8, '#64748B', '#1E293B', 2);
+
+    // Khung màn hình máy tính 3D
+    drawRoundedRect(ctx, 64, 20, 632, 292, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 78, 34, 604, 260, 8, '#F8FAFC', '#CBD5E1', 1.5);
+
+    // Thanh trình duyệt Web
+    drawRoundedRect(ctx, 78, 34, 604, 28, 6, '#0284C7');
     ['#EF4444', '#F59E0B', '#22C55E'].forEach((col, i) => {
         ctx.beginPath();
-        ctx.arc(36 + i * 16, 34, 5.5, 0, Math.PI * 2);
+        ctx.arc(96 + i * 15, 48, 5, 0, Math.PI * 2);
         ctx.fillStyle = col;
         ctx.fill();
     });
+    drawRoundedRect(ctx, 150, 40, 514, 16, 8, '#FFFFFF', '#BAE6FD', 1);
 
-    const browserTitle = figMatch
-        ? `TRÌNH DUYỆT WEB • HÌNH ${figMatch[1].toUpperCase()}: CÁC DẠNG THÔNG TIN TRÊN TRANG WEB`
-        : isClassificationExercise
-            ? `TRANG WEB MẪU • ${exMatch ? `BÀI TẬP ${exMatch[1]}: ` : ''}NHẬN DIỆN THÔNG TIN VĂN BẢN, HÌNH ẢNH, VIDEO`
-            : 'GIAO DIỆN TRANG WEB MINH HỌA • VĂN BẢN, HÌNH ẢNH, ÂM THANH & VIDEO';
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 13px "Times New Roman", Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(browserTitle, 88, 34);
-
-    // Thanh địa chỉ URL
-    drawRoundedRect(ctx, 30, 62, 700, 28, 6, '#FFFFFF', '#CBD5E1', 1.2);
-    ctx.fillStyle = '#0369A1';
-    ctx.font = 'bold 12px Arial, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('🔒 https://khamphatinhoc-tieuhoc.edu.vn/thong-tin-tren-trang-web', 44, 76);
-
-    const posIdxText = primaryLower.indexOf('văn bản') >= 0 ? primaryLower.indexOf('văn bản') : 999;
-    const posIdxImg = primaryLower.indexOf('hình ảnh') >= 0 ? primaryLower.indexOf('hình ảnh') : 999;
-    const posIdxVid = primaryLower.indexOf('video') >= 0 ? primaryLower.indexOf('video') : (primaryLower.indexOf('âm thanh') >= 0 ? primaryLower.indexOf('âm thanh') : 999);
-
-    const itemsOrder = [
-        { key: 'text', pos: posIdxText },
-        { key: 'image', pos: posIdxImg },
-        { key: 'video', pos: posIdxVid }
-    ].sort((a, b) => a.pos - b.pos);
-
-    const numMap: Record<string, number> = { text: 1, image: 2, video: 3 };
-    if (hasNumberedPositions && (posIdxText !== 999 || posIdxImg !== 999 || posIdxVid !== 999)) {
-        itemsOrder.forEach((item, idx) => {
-            numMap[item.key] = idx + 1;
-        });
+    // Khu vực 1: Bài viết văn bản trên trang web (bên trái)
+    drawRoundedRect(ctx, 92, 74, 256, 206, 8, '#FFFFFF', '#93C5FD', 1.5);
+    drawRoundedRect(ctx, 106, 90, 180, 14, 4, '#1D4ED8');
+    for (let i = 0; i < 6; i++) {
+        drawRoundedRect(ctx, 106, 118 + i * 20, i === 5 ? 140 : 224, 9, 4, i % 2 === 0 ? '#64748B' : '#94A3B8');
     }
+    // Dòng liên kết siêu văn bản màu xanh có gạch chân
+    drawRoundedRect(ctx, 106, 246, 165, 10, 4, '#0284C7');
 
-    // KHU VỰC 1: THÔNG TIN VĂN BẢN
-    drawRoundedRect(ctx, 30, 102, 340, 224, 8, '#FFFFFF', '#2563EB', 1.8);
-    drawRoundedRect(ctx, 40, 112, 320, 28, 5, '#DBEAFE');
-    ctx.fillStyle = '#1E40AF';
-    ctx.font = 'bold 13px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('📄 THÔNG TIN DẠNG VĂN BẢN (CHỮ VIẾT)', 50, 126);
-
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.fillText('Bản tin: Khám phá thiên nhiên Việt Nam', 48, 158);
-
-    ctx.fillStyle = '#334155';
-    ctx.font = '12.5px "Times New Roman", Arial';
-    [
-        '• Trang web cung cấp bài viết giới thiệu về',
-        '  danh lam thắng cảnh, số liệu và kiến thức.',
-        '• Bao gồm các chữ cái, con số, đoạn văn giúp',
-        '  học sinh đọc và tìm hiểu nội dung bài học.',
-        '• Có chứa siêu liên kết (Hyperlink) dẫn tới',
-        '  các trang thông tin chi tiết liên quan.'
-    ].forEach((l, i) => {
-        ctx.fillText(l, 48, 182 + i * 19);
-    });
-    drawBadgeLabel(ctx, 'Dạng Văn bản (Chữ & Số)', 200, 306, '#EFF6FF', '#2563EB', '#1D4ED8');
-
-    // KHU VỰC 2: THÔNG TIN HÌNH ẢNH
-    drawRoundedRect(ctx, 382, 102, 168, 224, 8, '#FFFFFF', '#16A34A', 1.8);
-    drawRoundedRect(ctx, 390, 112, 152, 28, 5, '#DCFCE7');
-    ctx.fillStyle = '#166534';
-    ctx.font = 'bold 12px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🖼️ THÔNG TIN HÌNH ẢNH', 466, 126);
-
-    drawRoundedRect(ctx, 396, 148, 140, 126, 6, '#E0F2FE', '#38BDF8', 1.2);
+    // Khu vực 2: Khung tranh phong cảnh trên trang web (giữa)
+    drawRoundedRect(ctx, 360, 74, 150, 206, 8, '#FFFFFF', '#86EFAC', 1.5);
+    drawRoundedRect(ctx, 372, 88, 126, 156, 6, '#E0F2FE', '#38BDF8', 1.2);
     ctx.beginPath();
-    ctx.arc(424, 174, 12, 0, Math.PI * 2);
+    ctx.arc(402, 118, 14, 0, Math.PI * 2);
     ctx.fillStyle = '#FACC15';
     ctx.fill();
-
     ctx.beginPath();
-    ctx.moveTo(396, 260);
-    ctx.lineTo(438, 204);
-    ctx.lineTo(476, 244);
-    ctx.lineTo(504, 212);
-    ctx.lineTo(536, 260);
+    ctx.moveTo(372, 232);
+    ctx.lineTo(414, 168);
+    ctx.lineTo(450, 210);
+    ctx.lineTo(476, 182);
+    ctx.lineTo(498, 232);
     ctx.closePath();
     ctx.fillStyle = '#22C55E';
     ctx.fill();
 
-    drawBadgeLabel(ctx, 'Dạng Hình ảnh', 466, 306, '#DCFCE7', '#16A34A', '#15803D');
-
-    // KHU VỰC 3: THÔNG TIN VIDEO & ÂM THANH
-    drawRoundedRect(ctx, 562, 102, 168, 224, 8, '#FFFFFF', '#EA580C', 1.8);
-    drawRoundedRect(ctx, 570, 112, 152, 28, 5, '#FFEDD5');
-    ctx.fillStyle = '#9A3412';
-    ctx.font = 'bold 12px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🎬 VIDEO & ÂM THANH', 646, 126);
-
-    drawRoundedRect(ctx, 576, 148, 140, 96, 6, '#1E293B', '#475569', 1.2);
+    // Khu vực 3: Trình phát Video & Loa âm thanh trên trang web (bên phải)
+    drawRoundedRect(ctx, 522, 74, 146, 206, 8, '#FFFFFF', '#FDBA74', 1.5);
+    drawRoundedRect(ctx, 534, 88, 122, 106, 6, '#1E293B', '#475569', 1.2);
     ctx.beginPath();
-    ctx.arc(646, 192, 20, 0, Math.PI * 2);
+    ctx.arc(595, 141, 20, 0, Math.PI * 2);
     ctx.fillStyle = '#EF4444';
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(640, 182);
-    ctx.lineTo(657, 192);
-    ctx.lineTo(640, 202);
+    ctx.moveTo(589, 131);
+    ctx.lineTo(606, 141);
+    ctx.lineTo(589, 151);
     ctx.closePath();
     ctx.fillStyle = '#FFFFFF';
     ctx.fill();
 
-    ctx.fillStyle = '#E2E8F0';
-    ctx.font = '11px Arial';
-    ctx.fillText('🔊 01:25 / 03:40', 646, 232);
+    // Thanh sóng âm thanh trực quan phía dưới trình phát video
+    drawRoundedRect(ctx, 534, 208, 122, 54, 6, '#FFF7ED', '#FB923C', 1.2);
+    const waveBars = [14, 28, 36, 20, 32, 16, 26, 12];
+    waveBars.forEach((bh, idx) => {
+        drawRoundedRect(ctx, 548 + idx * 12, 235 - bh / 2, 6, bh, 3, '#EA580C');
+    });
 
-    drawRoundedRect(ctx, 576, 252, 140, 32, 5, '#FFF7ED', '#F97316', 1);
-    ctx.fillStyle = '#C2410C';
-    ctx.font = 'bold 11.5px "Times New Roman", Arial';
-    ctx.fillText('🔊 Bản nhạc & Thuyết minh', 646, 268);
-
-    drawBadgeLabel(ctx, 'Dạng Video & Âm thanh', 646, 306, '#FFEDD5', '#EA580C', '#9A3412');
-
-    drawNumberedCalloutCircle(ctx, numMap.text, 348, 126, 14);
-    drawNumberedCalloutCircle(ctx, numMap.image, 528, 126, 14);
-    drawNumberedCalloutCircle(ctx, numMap.video, 708, 126, 14);
-
-    drawRoundedRect(ctx, 30, 338, 700, 50, 8, '#FEF3C7', '#F59E0B', 1.5);
-    ctx.fillStyle = '#92400E';
-    ctx.font = 'bold 13px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-        `Chú giải: (${numMap.text}) Thông tin dạng Văn bản (chữ, số)   •   (${numMap.image}) Thông tin dạng Hình ảnh (tranh, ảnh)   •   (${numMap.video}) Thông tin dạng Video & Âm thanh`,
-        380,
-        363
-    );
+    if (hasNumberedPositions) {
+        drawNumberedCalloutCircle(ctx, 1, 330, 92, 13);
+        drawNumberedCalloutCircle(ctx, 2, 492, 92, 13);
+        drawNumberedCalloutCircle(ctx, 3, 650, 92, 13);
+    }
 };
 
 /**
- * 7. VẼ MÀN HÌNH HIỂN THỊ 4 DẠNG THÔNG TIN ĐA PHƯƠNG TIỆN (VĂN BẢN, HÌNH ẢNH, ÂM THANH, VIDEO)
+ * 7. HÌNH ẢNH TRỰC QUAN MÀN HÌNH ĐA PHƯƠNG TIỆN & LOA MÁY TÍNH TRÊN BÀN GỖ
+ * (Không vẽ bảng 4 cột infographic - vẽ trực tiếp bộ máy tính hiển thị văn bản, tranh ảnh, video và cặp loa phát âm thanh)
  */
 const drawMultimediaTypesOnScreenScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 40, 10, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 15px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('CÁC DẠNG THÔNG TIN CƠ BẢN TRÊN MÁY TÍNH & INTERNET', 380, 36);
+    drawWebpageInformationScene(ctx, '', '');
 
-    const cards = [
-        {
-            x: 34,
-            w: 162,
-            title: '1. DẠNG VĂN BẢN',
-            sub: '(Chữ viết, con số)',
-            bg: '#EFF6FF',
-            border: '#2563EB',
-            headerBg: '#DBEAFE',
-            textColor: '#1E40AF',
-            type: 'text'
-        },
-        {
-            x: 210,
-            w: 162,
-            title: '2. DẠNG HÌNH ẢNH',
-            sub: '(Tranh vẽ, ảnh chụp)',
-            bg: '#F0FDF4',
-            border: '#16A34A',
-            headerBg: '#DCFCE7',
-            textColor: '#166534',
-            type: 'image'
-        },
-        {
-            x: 386,
-            w: 162,
-            title: '3. DẠNG ÂM THANH',
-            sub: '(Tiếng nói, bản nhạc)',
-            bg: '#FFFBEB',
-            border: '#D97706',
-            headerBg: '#FEF3C7',
-            textColor: '#92400E',
-            type: 'audio'
-        },
-        {
-            x: 562,
-            w: 162,
-            title: '4. DẠNG VIDEO',
-            sub: '(Phim, clip chuyển động)',
-            bg: '#FEF2F2',
-            border: '#DC2626',
-            headerBg: '#FEE2E2',
-            textColor: '#991B1B',
-            type: 'video'
-        }
-    ];
+    // Vẽ thêm cặp loa vật lý hai bên màn hình trên mặt bàn gỗ để thể hiện trực quan âm thanh phát ra
+    drawRoundedRect(ctx, 18, 226, 40, 122, 8, '#1E293B', '#475569', 2);
+    ctx.beginPath();
+    ctx.arc(38, 262, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#38BDF8';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(38, 308, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#0284C7';
+    ctx.fill();
 
-    cards.forEach(c => {
-        drawRoundedRect(ctx, c.x, 76, c.w, 304, 10, c.bg, c.border, 2);
-        drawRoundedRect(ctx, c.x + 8, 86, c.w - 16, 52, 6, c.headerBg);
-        ctx.fillStyle = c.textColor;
-        ctx.font = 'bold 13px "Times New Roman", Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(c.title, c.x + c.w / 2, 104);
-        ctx.font = 'italic 12px "Times New Roman", Arial';
-        ctx.fillText(c.sub, c.x + c.w / 2, 124);
-
-        const icX = c.x + c.w / 2;
-        const icY = 216;
-        drawRoundedRect(ctx, c.x + 18, 152, c.w - 36, 132, 8, '#FFFFFF', c.border, 1.4);
-
-        if (c.type === 'text') {
-            ctx.fillStyle = '#1D4ED8';
-            ctx.font = 'bold 26px "Times New Roman", serif';
-            ctx.fillText('Aa Bb 123', icX, icY - 22);
-            ctx.fillStyle = '#475569';
-            ctx.font = '12px Arial';
-            ctx.fillText('Bài viết, sách báo,', icX, icY + 14);
-            ctx.fillText('tài liệu chữ & số', icX, icY + 34);
-        } else if (c.type === 'image') {
-            ctx.beginPath();
-            ctx.arc(icX - 24, icY - 26, 11, 0, Math.PI * 2);
-            ctx.fillStyle = '#FACC15';
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(icX - 46, icY + 26);
-            ctx.lineTo(icX - 12, icY - 12);
-            ctx.lineTo(icX + 18, icY + 18);
-            ctx.lineTo(icX + 34, icY - 4);
-            ctx.lineTo(icX + 48, icY + 26);
-            ctx.closePath();
-            ctx.fillStyle = '#22C55E';
-            ctx.fill();
-            ctx.fillStyle = '#166534';
-            ctx.font = '12px Arial';
-            ctx.fillText('Tranh vẽ, ảnh chụp,', icX, icY + 46);
-        } else if (c.type === 'audio') {
-            const bars = [18, 36, 52, 28, 46, 22, 38];
-            bars.forEach((bh, bi) => {
-                drawRoundedRect(ctx, icX - 42 + bi * 13, icY - bh / 2 - 10, 8, bh, 3, '#D97706');
-            });
-            ctx.fillStyle = '#92400E';
-            ctx.font = '12px Arial';
-            ctx.fillText('Giọng đọc, bài hát,', icX, icY + 34);
-            ctx.fillText('âm thanh phát ra', icX, icY + 52);
-        } else if (c.type === 'video') {
-            drawRoundedRect(ctx, icX - 44, icY - 38, 88, 54, 6, '#1E293B');
-            ctx.beginPath();
-            ctx.arc(icX, icY - 11, 15, 0, Math.PI * 2);
-            ctx.fillStyle = '#EF4444';
-            ctx.fill();
-            ctx.beginPath();
-            ctx.moveTo(icX - 5, icY - 18);
-            ctx.lineTo(icX + 8, icY - 11);
-            ctx.lineTo(icX - 5, icY - 4);
-            ctx.closePath();
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fill();
-            ctx.fillStyle = '#991B1B';
-            ctx.font = '12px Arial';
-            ctx.fillText('Hình ảnh chuyển động', icX, icY + 34);
-            ctx.fillText('kèm theo âm thanh', icX, icY + 52);
-        }
-
-        drawBadgeLabel(ctx, 'Quan sát & Nhận biết', icX, 344, '#FFFFFF', c.border, c.textColor);
-    });
+    drawRoundedRect(ctx, 702, 226, 40, 122, 8, '#1E293B', '#475569', 2);
+    ctx.beginPath();
+    ctx.arc(722, 262, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#38BDF8';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(722, 308, 13, 0, Math.PI * 2);
+    ctx.fillStyle = '#0284C7';
+    ctx.fill();
 };
 
 /**
- * 8. VẼ CÁC CỔNG KẾT NỐI VẬT LÝ & KHẮC PHỤC SỰ CỐ KỸ THUẬT MÁY TÍNH
+ * 8. HÌNH ẢNH TRỰC QUAN THÂN MÁY TÍNH, CÁC CỔNG KẾT NỐI VẬT LÝ (USB, HDMI, ÂM THANH) & ĐẦU DÂY CÁP TRÊN BÀN
+ * (Tuyệt đối không vẽ bảng Bước 1, Bước 2, Bước 3 dạng infographic)
  */
 const drawConnectionPortsAndTroubleshootingScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#0284C7', 2.5);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F8FAFC');
+    bgGrad.addColorStop(0.7, '#E2E8F0');
+    bgGrad.addColorStop(1, '#CBD5E1');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#475569', 2);
 
-    // Nửa trái: Các cổng kết nối vật lý trên thân máy
-    drawRoundedRect(ctx, 30, 32, 340, 356, 10, '#FFFFFF', '#0284C7', 2);
-    drawRoundedRect(ctx, 40, 42, 320, 34, 6, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🔌 CÁC CỔNG KẾT NỐI TRÊN THÂN MÁY', 200, 59);
+    // Mặt bàn gỗ phía dưới
+    const tableGrad = ctx.createLinearGradient(0, 310, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 312, 736, 94, 8, tableGrad, '#78350F', 1.5);
 
-    const ports = [
-        { y: 92, name: 'Cổng USB (Chuột, Bàn phím, USB)', desc: 'Hình chữ nhật phẳng, cắm đúng chiều', color: '#2563EB' },
-        { y: 176, name: 'Cổng HDMI / VGA (Màn hình, Máy chiếu)', desc: 'Truyền hình ảnh & âm thanh chất lượng cao', color: '#7C3AED' },
-        { y: 260, name: 'Cổng Âm thanh / Mạng LAN (Loa, Internet)', desc: 'Giắc tròn 3.5mm (xanh/hồng) & cổng RJ45', color: '#16A34A' }
-    ];
+    // Thân máy tính (Case CPU) 3D nhìn cận cảnh bảng cổng kết nối (bên trái)
+    ctx.beginPath();
+    ctx.ellipse(230, 354, 130, 20, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fill();
+    drawRoundedRect(ctx, 96, 44, 268, 306, 14, '#1E293B', '#0F172A', 3);
+    drawRoundedRect(ctx, 118, 66, 224, 262, 10, '#334155', '#64748B', 2);
 
-    ports.forEach((p, idx) => {
-        drawRoundedRect(ctx, 44, p.y, 312, 72, 8, '#F8FAFC', p.color, 1.5);
-        drawRoundedRect(ctx, 56, p.y + 18, 66, 36, 5, '#1E293B', p.color, 2);
-        if (idx === 0) {
-            drawRoundedRect(ctx, 68, p.y + 26, 42, 10, 2, '#3B82F6');
-        } else if (idx === 1) {
-            drawRoundedRect(ctx, 66, p.y + 28, 46, 14, 3, '#A855F7');
-        } else {
-            ctx.beginPath();
-            ctx.arc(76, p.y + 36, 9, 0, Math.PI * 2);
-            ctx.fillStyle = '#22C55E';
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(102, p.y + 36, 9, 0, Math.PI * 2);
-            ctx.fillStyle = '#EC4899';
-            ctx.fill();
-        }
+    // Cổng USB vật lý (màu xanh dương)
+    drawRoundedRect(ctx, 146, 92, 78, 34, 4, '#0F172A', '#94A3B8', 2);
+    drawRoundedRect(ctx, 156, 100, 58, 12, 2, '#2563EB');
 
-        ctx.fillStyle = '#0F172A';
-        ctx.font = 'bold 12.5px "Times New Roman", Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(p.name, 134, p.y + 28);
-        ctx.fillStyle = '#475569';
-        ctx.font = '12px "Times New Roman", Arial';
-        ctx.fillText(p.desc, 134, p.y + 50);
-    });
+    drawRoundedRect(ctx, 146, 142, 78, 34, 4, '#0F172A', '#94A3B8', 2);
+    drawRoundedRect(ctx, 156, 150, 58, 12, 2, '#2563EB');
 
-    // Nửa phải: Quy trình kiểm tra & khắc phục sự cố cơ bản
-    drawRoundedRect(ctx, 386, 32, 344, 356, 10, '#FFFFFF', '#DC2626', 2);
-    drawRoundedRect(ctx, 396, 42, 324, 34, 6, '#DC2626');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🛠️ THAO TÁC KIỂM TRA & KHẮC PHỤC SỰ CỐ', 558, 59);
+    // Cổng HDMI vật lý (vát hai góc dưới)
+    drawRoundedRect(ctx, 146, 196, 86, 34, 5, '#0F172A', '#F59E0B', 2);
+    drawRoundedRect(ctx, 158, 207, 62, 10, 2, '#D97706');
 
-    const steps = [
-        {
-            num: 'Bước 1',
-            title: 'Kiểm tra đầu dây cáp kết nối',
-            detail: 'Quan sát xem đầu cáp USB/HDMI có bị lỏng hoặc cắm sai cổng không.'
-        },
-        {
-            num: 'Bước 2',
-            title: 'Cắm lại nhẹ nhàng, đúng chiều',
-            detail: 'Đẩy thẳng đầu cáp vào đúng cổng tương ứng, không ấn mạnh khi lệch.'
-        },
-        {
-            num: 'Bước 3',
-            title: 'Kiểm tra đèn tín hiệu & Báo giáo viên',
-            detail: 'Xem đèn báo chuột/màn hình đã sáng chưa; nhờ người lớn khi cần.'
-        }
-    ];
+    // Cổng âm thanh 3.5mm (xanh lá & hồng) và cổng mạng LAN
+    ctx.beginPath();
+    ctx.arc(168, 272, 14, 0, Math.PI * 2);
+    ctx.fillStyle = '#22C55E';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(168, 272, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#0F172A';
+    ctx.fill();
 
-    steps.forEach((st, idx) => {
-        const y = 92 + idx * 92;
-        drawRoundedRect(ctx, 400, y, 316, 78, 8, '#FEF2F2', '#FCA5A5', 1.5);
-        drawBadgeLabel(ctx, st.num, 444, y + 24, '#DC2626', '#991B1B', '#FFFFFF');
-        ctx.fillStyle = '#991B1B';
-        ctx.font = 'bold 13px "Times New Roman", Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(st.title, 488, y + 24);
+    ctx.beginPath();
+    ctx.arc(208, 272, 14, 0, Math.PI * 2);
+    ctx.fillStyle = '#EC4899';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(208, 272, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#0F172A';
+    ctx.fill();
 
-        ctx.fillStyle = '#334155';
-        ctx.font = '12px "Times New Roman", Arial';
-        const lines = wrapCanvasText(ctx, st.detail, 290, 2);
-        lines.forEach((l, li) => {
-            ctx.fillText(l, 412, y + 48 + li * 16);
-        });
-    });
+    drawRoundedRect(ctx, 246, 252, 66, 42, 4, '#0F172A', '#38BDF8', 2);
+    drawRoundedRect(ctx, 258, 262, 42, 22, 2, '#FACC15');
+
+    // Các đầu dây cáp USB, cáp HDMI và chuột máy tính đặt trực quan bên phải đang hướng vào cổng cắm
+    // 1. Đầu cáp USB
+    ctx.strokeStyle = '#1E293B';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.moveTo(520, 109);
+    ctx.bezierCurveTo(600, 109, 640, 160, 680, 250);
+    ctx.stroke();
+    drawRoundedRect(ctx, 434, 91, 88, 36, 6, '#2563EB', '#1E3A8A', 2);
+    drawRoundedRect(ctx, 398, 97, 38, 24, 3, '#E2E8F0', '#64748B', 2);
+    drawRoundedRect(ctx, 406, 102, 12, 6, 1, '#475569');
+    drawRoundedRect(ctx, 406, 111, 12, 6, 1, '#475569');
+
+    // 2. Đầu cáp HDMI
+    ctx.strokeStyle = '#0F172A';
+    ctx.lineWidth = 11;
+    ctx.beginPath();
+    ctx.moveTo(530, 213);
+    ctx.bezierCurveTo(610, 213, 660, 260, 710, 340);
+    ctx.stroke();
+    drawRoundedRect(ctx, 438, 193, 94, 40, 8, '#334155', '#0F172A', 2);
+    drawRoundedRect(ctx, 400, 201, 40, 24, 3, '#F59E0B', '#B45309', 2);
+
+    // 3. Chuột máy tính có đèn tín hiệu đặt trên mặt bàn gỗ
+    ctx.beginPath();
+    ctx.ellipse(585, 362, 56, 14, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+    drawRoundedRect(ctx, 540, 286, 90, 72, 36, '#FFFFFF', '#334155', 2.5);
+    drawRoundedRect(ctx, 581, 294, 8, 22, 4, '#EF4444');
 };
 
 /**
- * 9. VẼ THẺ THIẾT BỊ PHẦN CỨNG & PHẦN MỀM CỤ THỂ
+ * 9. DANH MỤC ĐỐI TƯỢNG PHẦN CỨNG & PHẦN MỀM CỤ THỂ
  */
 interface SpecificCatalogItem {
     id: string;
@@ -1541,7 +1216,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['máy in'],
         title: 'MÁY IN (PRINTER)',
         category: 'PHẦN CỨNG MÁY TÍNH',
-        subtitle: 'Thiết bị ngoại vi dùng để in văn bản, hình ảnh ra giấy',
+        subtitle: '',
         color: '#0284C7',
         bg: '#F0F9FF'
     },
@@ -1550,7 +1225,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['ổ đĩa cứng', 'ổ cứng'],
         title: 'Ổ ĐĨA CỨNG (HDD / SSD)',
         category: 'PHẦN CỨNG MÁY TÍNH',
-        subtitle: 'Thiết bị phần cứng lưu trữ dữ liệu bên trong hoặc ngoài thân máy',
+        subtitle: '',
         color: '#2563EB',
         bg: '#EFF6FF'
     },
@@ -1559,7 +1234,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['usb', 'thẻ nhớ', 'bộ nhớ ngoài'],
         title: 'THIẾT BỊ NHỚ USB',
         category: 'PHẦN CỨNG MÁY TÍNH',
-        subtitle: 'Thiết bị phần cứng nhỏ gọn dùng để lưu và di chuyển tệp',
+        subtitle: '',
         color: '#0D9488',
         bg: '#F0FDFA'
     },
@@ -1568,7 +1243,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['loa máy tính', 'loa', 'tai nghe'],
         title: 'LOA MÁY TÍNH (SPEAKER)',
         category: 'PHẦN CỨNG MÁY TÍNH',
-        subtitle: 'Thiết bị phần cứng đưa thông tin âm thanh ra bên ngoài',
+        subtitle: '',
         color: '#4F46E5',
         bg: '#EEF2FF'
     },
@@ -1577,7 +1252,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['màn hình'],
         title: 'MÀN HÌNH (MONITOR)',
         category: 'PHẦN CỨNG MÁY TÍNH',
-        subtitle: 'Thiết bị phần cứng hiển thị hình ảnh và kết quả làm việc',
+        subtitle: '',
         color: '#0369A1',
         bg: '#F0F9FF'
     },
@@ -1586,7 +1261,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['bàn phím', 'chuột máy tính'],
         title: 'BÀN PHÍM & CHUỘT',
         category: 'PHẦN CỨNG MÁY TÍNH',
-        subtitle: 'Thiết bị phần cứng dùng để nhập dữ liệu và điều khiển',
+        subtitle: '',
         color: '#1D4ED8',
         bg: '#EFF6FF'
     },
@@ -1595,7 +1270,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['luyện gõ bàn phím', 'phần mềm luyện gõ', 'rapidtyping', 'ứng dụng luyện gõ'],
         title: 'ỨNG DỤNG LUYỆN GÕ BÀN PHÍM',
         category: 'PHẦN MỀM MÁY TÍNH',
-        subtitle: 'Chương trình phần mềm giúp rèn kỹ năng gõ phím 10 ngón',
+        subtitle: '',
         color: '#16A34A',
         bg: '#F0FDF4'
     },
@@ -1604,7 +1279,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['phần mềm soạn thảo', 'microsoft word', 'ứng dụng soạn thảo'],
         title: 'PHẦN MỀM SOẠN THẢO WORD',
         category: 'PHẦN MỀM MÁY TÍNH',
-        subtitle: 'Chương trình phần mềm dùng để gõ và trình bày văn bản',
+        subtitle: '',
         color: '#15803D',
         bg: '#F0FDF4'
     },
@@ -1613,7 +1288,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['phần mềm vẽ', 'ms paint', 'ứng dụng vẽ'],
         title: 'PHẦN MỀM ĐỒ HỌA PAINT',
         category: 'PHẦN MỀM MÁY TÍNH',
-        subtitle: 'Chương trình phần mềm giúp vẽ tranh và tô màu trên máy tính',
+        subtitle: '',
         color: '#D97706',
         bg: '#FFFBEB'
     },
@@ -1622,7 +1297,7 @@ const SPECIFIC_HARDWARE_SOFTWARE_CATALOG: SpecificCatalogItem[] = [
         keywords: ['trình duyệt web', 'google chrome', 'cốc cốc'],
         title: 'TRÌNH DUYỆT WEB (CHROME)',
         category: 'PHẦN MỀM MÁY TÍNH',
-        subtitle: 'Chương trình phần mềm dùng để truy cập và xem các trang web',
+        subtitle: '',
         color: '#EA580C',
         bg: '#FFF7ED'
     }
@@ -1637,71 +1312,72 @@ const drawCatalogItemIllustration = (
 ) => {
     ctx.save();
     if (itemId === 'printer') {
-        drawRoundedRect(ctx, cx - 32, cy - 38, 64, 24, 3, '#FFFFFF', '#64748B', 1.5);
-        drawRoundedRect(ctx, cx - 48, cy - 16, 96, 40, 8, '#334155', color, 2);
-        drawRoundedRect(ctx, cx - 34, cy + 16, 68, 26, 3, '#FFFFFF', '#3B82F6', 1.5);
+        drawRoundedRect(ctx, cx - 44, cy - 52, 88, 34, 4, '#FFFFFF', '#64748B', 2);
+        drawRoundedRect(ctx, cx - 68, cy - 22, 136, 56, 10, '#334155', color, 2.5);
+        drawRoundedRect(ctx, cx - 48, cy + 22, 96, 38, 4, '#FFFFFF', '#3B82F6', 2);
         ctx.strokeStyle = '#2563EB';
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(cx - 22, cy + 25);
-        ctx.lineTo(cx + 22, cy + 25);
-        ctx.moveTo(cx - 22, cy + 33);
-        ctx.lineTo(cx + 12, cy + 33);
+        ctx.moveTo(cx - 32, cy + 35);
+        ctx.lineTo(cx + 32, cy + 35);
+        ctx.moveTo(cx - 32, cy + 47);
+        ctx.lineTo(cx + 18, cy + 47);
         ctx.stroke();
     } else if (itemId === 'hdd') {
-        drawRoundedRect(ctx, cx - 40, cy - 38, 80, 76, 8, '#1E293B', color, 2);
+        drawRoundedRect(ctx, cx - 54, cy - 52, 108, 104, 12, '#1E293B', color, 2.5);
         ctx.beginPath();
-        ctx.arc(cx - 4, cy - 2, 24, 0, Math.PI * 2);
+        ctx.arc(cx - 6, cy - 4, 34, 0, Math.PI * 2);
         ctx.fillStyle = '#94A3B8';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(cx - 4, cy - 2, 7, 0, Math.PI * 2);
+        ctx.arc(cx - 6, cy - 4, 10, 0, Math.PI * 2);
         ctx.fillStyle = '#1E293B';
         ctx.fill();
         ctx.strokeStyle = '#F59E0B';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.moveTo(cx + 24, cy + 24);
-        ctx.lineTo(cx + 2, cy + 4);
+        ctx.moveTo(cx + 32, cy + 34);
+        ctx.lineTo(cx + 4, cy + 6);
         ctx.stroke();
     } else if (itemId === 'typing_app') {
-        drawRoundedRect(ctx, cx - 50, cy - 38, 100, 76, 8, '#FFFFFF', color, 2);
-        drawRoundedRect(ctx, cx - 50, cy - 38, 100, 18, 6, color);
+        drawRoundedRect(ctx, cx - 64, cy - 48, 128, 96, 10, '#FFFFFF', color, 2.5);
+        drawRoundedRect(ctx, cx - 64, cy - 48, 128, 22, 8, color);
         ['F', 'J', 'D', 'K'].forEach((k, idx) => {
-            drawRoundedRect(ctx, cx - 40 + idx * 21, cy - 12, 17, 17, 4, '#DCFCE7', '#16A34A', 1.2);
+            drawRoundedRect(ctx, cx - 50 + idx * 26, cy - 16, 22, 22, 5, '#DCFCE7', '#16A34A', 1.5);
             ctx.fillStyle = '#15803D';
-            ctx.font = 'bold 11px Arial';
+            ctx.font = 'bold 12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(k, cx - 31.5 + idx * 21, cy - 3);
+            ctx.fillText(k, cx - 39 + idx * 26, cy - 2);
         });
-        drawRoundedRect(ctx, cx - 38, cy + 12, 76, 16, 4, '#EFF6FF', '#3B82F6', 1);
+        drawRoundedRect(ctx, cx - 48, cy + 16, 96, 20, 5, '#EFF6FF', '#3B82F6', 1.2);
     } else if (itemId === 'usb_drive') {
-        drawRoundedRect(ctx, cx - 44, cy - 14, 24, 28, 3, '#94A3B8', '#475569', 1.5);
-        drawRoundedRect(ctx, cx - 20, cy - 20, 64, 40, 8, color, '#0F172A', 2);
+        drawRoundedRect(ctx, cx - 58, cy - 18, 32, 36, 4, '#94A3B8', '#475569', 2);
+        drawRoundedRect(ctx, cx - 26, cy - 26, 86, 52, 10, color, '#0F172A', 2.5);
     } else if (itemId === 'speaker') {
-        drawRoundedRect(ctx, cx - 32, cy - 36, 64, 72, 8, '#1E293B', color, 2);
+        drawRoundedRect(ctx, cx - 44, cy - 50, 88, 100, 12, '#1E293B', color, 2.5);
         ctx.beginPath();
-        ctx.arc(cx, cy + 8, 18, 0, Math.PI * 2);
+        ctx.arc(cx, cy + 12, 24, 0, Math.PI * 2);
         ctx.fillStyle = '#38BDF8';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(cx, cy - 20, 8, 0, Math.PI * 2);
+        ctx.arc(cx, cy - 26, 11, 0, Math.PI * 2);
         ctx.fillStyle = '#94A3B8';
         ctx.fill();
     } else {
-        drawRoundedRect(ctx, cx - 44, cy - 32, 88, 64, 8, '#FFFFFF', color, 2);
-        ctx.fillStyle = color;
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('THIẾT BỊ / PM', cx, cy + 4);
+        drawRoundedRect(ctx, cx - 58, cy - 44, 116, 88, 10, '#1E293B', color, 2.5);
+        drawRoundedRect(ctx, cx - 48, cy - 34, 96, 64, 6, '#38BDF8');
     }
     ctx.restore();
 };
 
+/**
+ * Vẽ trực tiếp các thiết bị phần cứng & màn hình phần mềm đặt trên mặt bàn gỗ 3D
+ * (Tuyệt đối không vẽ 3 thẻ chữ Infographic)
+ */
 const drawSpecificItemsCardsScene = (
     ctx: CanvasRenderingContext2D,
     matchedItems: SpecificCatalogItem[],
-    isClassifyExercise: boolean
+    _isClassifyExercise: boolean
 ) => {
     const items = matchedItems.slice(0, 3);
     while (items.length < 3) {
@@ -1710,397 +1386,477 @@ const drawSpecificItemsCardsScene = (
         else break;
     }
 
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 38, 10, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-        isClassifyExercise
-            ? 'CÁC THẺ THIẾT BỊ PHẦN CỨNG VÀ PHẦN MỀM MÁY TÍNH'
-            : 'MINH HỌA TRỰC QUAN CÁC THIẾT BỊ PHẦN CỨNG & PHẦN MỀM',
-        380,
-        35
-    );
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F0F9FF');
+    bgGrad.addColorStop(0.7, '#E0F2FE');
+    bgGrad.addColorStop(1, '#BAE6FD');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
 
-    const cardW = 224;
-    const gap = 16;
-    const startX = 28;
+    // Mặt bàn gỗ 3D
+    const tableGrad = ctx.createLinearGradient(0, 290, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(0.5, '#B45309');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 294, 736, 112, 8, tableGrad, '#78350F', 1.5);
 
+    const positions = [150, 380, 610];
     items.forEach((it, idx) => {
-        const x = startX + idx * (cardW + gap);
-        drawRoundedRect(ctx, x, 68, cardW, 320, 10, it.bg, it.color, 2);
+        const cx = positions[idx];
+        const cy = 225;
 
-        drawRoundedRect(ctx, x + 10, 78, cardW - 20, 34, 6, it.color);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 12px "Times New Roman", Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${idx + 1}. ${it.title}`, x + cardW / 2, 95);
+        // Bóng đổ trên mặt bàn gỗ
+        ctx.beginPath();
+        ctx.ellipse(cx, 326, 86, 18, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.24)';
+        ctx.fill();
 
-        drawRoundedRect(ctx, x + 18, 122, cardW - 36, 114, 8, '#FFFFFF', '#CBD5E1', 1.2);
-        drawCatalogItemIllustration(ctx, it.id, x + cardW / 2, 179, it.color);
-
-        const isHw = it.category === 'PHẦN CỨNG MÁY TÍNH';
-        drawBadgeLabel(
-            ctx,
-            isClassifyExercise ? `Phân loại: ${it.category}` : it.category,
-            x + cardW / 2,
-            258,
-            isHw ? '#DBEAFE' : '#DCFCE7',
-            it.color,
-            isHw ? '#1E3A8A' : '#14532D'
-        );
-
-        ctx.fillStyle = '#334155';
-        ctx.font = '12px "Times New Roman", Arial';
-        const descLines = wrapCanvasText(ctx, it.subtitle, cardW - 24, 3);
-        descLines.forEach((dl, di) => {
-            ctx.fillText(dl, x + cardW / 2, 290 + di * 18);
-        });
+        // Đế trưng bày vật phẩm 3D
+        drawRoundedRect(ctx, cx - 88, 128, 176, 192, 16, '#FFFFFF', it.color, 2.5);
+        drawCatalogItemIllustration(ctx, it.id, cx, cy, it.color);
     });
 };
 
 /**
- * 10. VẼ TỔNG QUAN PHẦN CỨNG & PHẦN MỀM MÁY TÍNH ĐỂ BÀN
+ * 10. HÌNH ẢNH TRỰC QUAN BỘ MÁY TÍNH ĐỂ BÀN 3D ĐẶT TRÊN BÀN GỖ (MÀN HÌNH HIỂN THỊ PHẦN MỀM, THÂN MÁY, BÀN PHÍM, CHUỘT, LOA)
+ * (Không vẽ bảng chia 2 cột chữ Phần cứng / Phần mềm kiểu infographic)
  */
 const drawHardwareSoftwareOverviewScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#0284C7', 2.5);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F0F9FF');
+    bgGrad.addColorStop(0.7, '#E0F2FE');
+    bgGrad.addColorStop(1, '#BAE6FD');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
 
-    // Khung bên trái: PHẦN CỨNG (HARDWARE)
-    drawRoundedRect(ctx, 28, 30, 344, 360, 10, '#F0F9FF', '#0284C7', 2);
-    drawRoundedRect(ctx, 38, 40, 324, 34, 6, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🖥️ PHẦN CỨNG MÁY TÍNH (HARDWARE)', 200, 57);
+    // Mặt bàn gỗ thực hành
+    const tableGrad = ctx.createLinearGradient(0, 286, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(0.55, '#B45309');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 288, 736, 118, 8, tableGrad, '#78350F', 1.5);
 
-    // Màn hình
-    drawRoundedRect(ctx, 64, 96, 134, 92, 6, '#1E293B', '#334155', 2);
-    drawRoundedRect(ctx, 72, 104, 118, 72, 4, '#38BDF8');
-    ctx.fillStyle = '#1E293B';
-    ctx.fillRect(120, 188, 22, 16);
-    ctx.fillRect(98, 204, 66, 6);
-    drawBadgeLabel(ctx, 'Màn hình', 131, 226);
-
-    // Thân máy (CPU)
-    drawRoundedRect(ctx, 232, 92, 86, 118, 6, '#334155', '#0F172A', 2);
-    ctx.fillStyle = '#22C55E';
+    // 1. Thân máy tính (Case CPU) đặt bên phải
     ctx.beginPath();
-    ctx.arc(275, 118, 6, 0, Math.PI * 2);
+    ctx.ellipse(608, 324, 76, 16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fill();
-    drawRoundedRect(ctx, 248, 138, 54, 12, 3, '#94A3B8');
-    drawBadgeLabel(ctx, 'Thân máy', 275, 226);
+    drawRoundedRect(ctx, 542, 64, 132, 256, 10, '#1E293B', '#0F172A', 3);
+    drawRoundedRect(ctx, 558, 84, 100, 24, 4, '#334155', '#64748B', 1.5);
+    ctx.beginPath();
+    ctx.arc(608, 146, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#22C55E';
+    ctx.fill();
+    drawRoundedRect(ctx, 574, 182, 68, 12, 3, '#38BDF8');
+    drawRoundedRect(ctx, 574, 202, 68, 12, 3, '#38BDF8');
 
-    // Bàn phím & Chuột
-    drawRoundedRect(ctx, 56, 256, 166, 52, 6, '#E2E8F0', '#475569', 1.8);
+    // 2. Màn hình máy tính 3D ở trung tâm hiển thị các biểu tượng phần mềm trực quan
+    ctx.beginPath();
+    ctx.ellipse(310, 316, 92, 14, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.24)';
+    ctx.fill();
+    drawRoundedRect(ctx, 286, 258, 48, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 232, 298, 156, 14, 7, '#64748B', '#1E293B', 2);
+
+    drawRoundedRect(ctx, 116, 42, 388, 224, 12, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 130, 56, 360, 192, 6, '#0284C7', '#38BDF8', 1.5);
+
+    // Các cửa sổ & biểu tượng phần mềm trên màn hình Desktop
+    drawRoundedRect(ctx, 146, 72, 62, 54, 10, '#FFFFFF', '#BAE6FD', 1.5);
+    drawRoundedRect(ctx, 158, 84, 38, 30, 4, '#2563EB');
+
+    drawRoundedRect(ctx, 146, 138, 62, 54, 10, '#FFFFFF', '#BAE6FD', 1.5);
+    ctx.beginPath();
+    ctx.arc(177, 165, 16, 0, Math.PI * 2);
+    ctx.fillStyle = '#F59E0B';
+    ctx.fill();
+
+    // Cửa sổ phần mềm đang mở trên màn hình
+    drawRoundedRect(ctx, 226, 72, 246, 152, 8, '#FFFFFF', '#E2E8F0', 2);
+    drawRoundedRect(ctx, 226, 72, 246, 24, 6, '#1E293B');
+    ['#EF4444', '#F59E0B', '#22C55E'].forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(242 + i * 14, 84, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+    });
+    drawRoundedRect(ctx, 244, 110, 140, 12, 4, '#3B82F6');
+    drawRoundedRect(ctx, 244, 130, 208, 8, 4, '#94A3B8');
+    drawRoundedRect(ctx, 244, 146, 186, 8, 4, '#94A3B8');
+    drawRoundedRect(ctx, 244, 168, 92, 42, 6, '#DCFCE7', '#22C55E', 1.5);
+    drawRoundedRect(ctx, 348, 168, 104, 42, 6, '#FEF3C7', '#F59E0B', 1.5);
+
+    // Thanh Taskbar dưới đáy màn hình
+    drawRoundedRect(ctx, 130, 232, 360, 16, 2, '#0F172A');
+
+    // 3. Loa máy tính bên trái
+    drawRoundedRect(ctx, 42, 186, 56, 122, 10, '#1E293B', '#475569', 2.5);
+    ctx.beginPath();
+    ctx.arc(70, 222, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#38BDF8';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(70, 268, 18, 0, Math.PI * 2);
+    ctx.fillStyle = '#0284C7';
+    ctx.fill();
+
+    // 4. Bàn phím & Chuột đặt phía trước trên mặt bàn gỗ
+    drawRoundedRect(ctx, 148, 324, 296, 66, 8, '#F8FAFC', '#334155', 2.5);
     for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 8; c++) {
-            ctx.fillStyle = '#475569';
-            ctx.fillRect(66 + c * 19, 264 + r * 14, 14, 9);
+        for (let c = 0; c < 11; c++) {
+            drawRoundedRect(ctx, 162 + c * 24.5, 334 + r * 17, 20, 12, 3, '#CBD5E1', '#64748B', 1);
         }
     }
-    drawBadgeLabel(ctx, 'Bàn phím', 139, 328);
 
-    drawRoundedRect(ctx, 256, 260, 44, 48, 20, '#E2E8F0', '#475569', 1.8);
-    drawBadgeLabel(ctx, 'Chuột', 278, 328);
-
-    // Khung bên phải: PHẦN MỀM (SOFTWARE)
-    drawRoundedRect(ctx, 388, 30, 344, 360, 10, '#F0FDF4', '#16A34A', 2);
-    drawRoundedRect(ctx, 398, 40, 324, 34, 6, '#16A34A');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('💿 PHẦN MỀM MÁY TÍNH (SOFTWARE)', 560, 57);
-
-    const swItems = [
-        { y: 92, icon: '🪟', title: 'Hệ điều hành (Windows)', desc: 'Điều khiển và quản lý hoạt động máy tính', col: '#0284C7' },
-        { y: 162, icon: '📝', title: 'Phần mềm Soạn thảo / Trình chiếu', desc: 'Word, PowerPoint phục vụ học tập', col: '#2563EB' },
-        { y: 232, icon: '⌨️', title: 'Ứng dụng Luyện gõ bàn phím & Vẽ', desc: 'RapidTyping, MS Paint, Scratch', col: '#16A34A' },
-        { y: 302, icon: '🌐', title: 'Trình duyệt Web (Chrome, Cốc Cốc)', desc: 'Truy cập và xem thông tin trên Internet', col: '#D97706' }
-    ];
-
-    swItems.forEach(item => {
-        drawRoundedRect(ctx, 406, item.y, 308, 58, 8, '#FFFFFF', item.col, 1.5);
-        ctx.font = '22px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(item.icon, 434, item.y + 30);
-
-        ctx.fillStyle = '#0F172A';
-        ctx.font = 'bold 12.5px "Times New Roman", Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(item.title, 460, item.y + 22);
-
-        ctx.fillStyle = '#475569';
-        ctx.font = '11.5px "Times New Roman", Arial';
-        ctx.fillText(item.desc, 460, item.y + 42);
-    });
+    drawRoundedRect(ctx, 474, 330, 48, 58, 24, '#F8FAFC', '#334155', 2.5);
+    drawRoundedRect(ctx, 495, 336, 6, 16, 3, '#0284C7');
 };
 
 /**
- * 11. VẼ BÀN PHÍM & CÁCH ĐẶT TAY HÀNG PHÍM CƠ SỞ
+ * 11. HÌNH ẢNH TRỰC QUAN BÀN PHÍM MÁY TÍNH 3D & HAI BÀN TAY ĐẶT TRÊN HÀNG PHÍM CƠ SỞ (PHÍM CÓ GAI F VÀ J)
  */
 const drawKeyboardErgonomicsScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 38, 10, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('KHU VỰC BÀN PHÍM & CÁCH ĐẶT TAY TRÊN HÀNG PHÍM CƠ SỞ (GAI PHÍM F VÀ J)', 380, 35);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#FEF3C7');
+    bgGrad.addColorStop(1, '#FDE68A');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#D97706', 2);
+
+    // Mặt bàn gỗ
+    const tableGrad = ctx.createLinearGradient(0, 40, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 24, 736, 382, 10, tableGrad, '#78350F', 1.5);
+
+    // Khung bàn phím máy tính 3D nhìn từ trên xuống
+    drawRoundedRect(ctx, 44, 46, 672, 274, 16, '#1E293B', '#0F172A', 3);
+    drawRoundedRect(ctx, 58, 60, 644, 246, 12, '#334155', '#475569', 2);
 
     const rows = [
-        { label: 'Hàng phím số', keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'], y: 78, color: '#E2E8F0', border: '#94A3B8' },
-        { label: 'Hàng phím trên', keys: ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], y: 132, color: '#DBEAFE', border: '#3B82F6' },
-        { label: 'Hàng phím cơ sở', keys: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';'], y: 186, color: '#FEF3C7', border: '#D97706' },
-        { label: 'Hàng phím dưới', keys: ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/'], y: 240, color: '#DCFCE7', border: '#16A34A' }
+        { keys: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'], y: 74, color: '#E2E8F0', border: '#94A3B8' },
+        { keys: ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], y: 124, color: '#DBEAFE', border: '#3B82F6' },
+        { keys: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';'], y: 174, color: '#FEF3C7', border: '#D97706' },
+        { keys: ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/'], y: 224, color: '#DCFCE7', border: '#16A34A' }
     ];
 
-    rows.forEach(r => {
-        drawBadgeLabel(ctx, r.label, 104, r.y + 20, r.color, r.border, '#0F172A');
+    rows.forEach((r, rIdx) => {
+        const offsetX = rIdx * 8;
         r.keys.forEach((k, idx) => {
-            const kx = 190 + idx * 50;
-            const isHomeFinger = r.label === 'Hàng phím cơ sở' && ['A', 'S', 'D', 'F', 'J', 'K', 'L', ';'].includes(k);
+            const kx = 86 + offsetX + idx * 56;
+            const isHomeFinger = rIdx === 2 && ['A', 'S', 'D', 'F', 'J', 'K', 'L', ';'].includes(k);
             drawRoundedRect(
                 ctx,
                 kx,
                 r.y,
+                48,
                 42,
-                40,
-                6,
-                isHomeFinger ? '#FDE68A' : r.color,
+                7,
+                isHomeFinger ? '#FDE047' : r.color,
                 isHomeFinger ? '#B45309' : r.border,
-                isHomeFinger ? 2.2 : 1.5
+                isHomeFinger ? 2.5 : 1.5
             );
             ctx.fillStyle = '#0F172A';
-            ctx.font = 'bold 14px Arial';
+            ctx.font = 'bold 15px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(k, kx + 21, r.y + 20);
+            ctx.fillText(k, kx + 24, r.y + 22);
 
+            // Gai định vị nổi bật trên phím F và J
             if (k === 'F' || k === 'J') {
-                ctx.fillStyle = '#DC2626';
-                ctx.fillRect(kx + 14, r.y + 31, 14, 3);
+                drawRoundedRect(ctx, kx + 15, r.y + 32, 18, 4, 2, '#DC2626');
             }
         });
     });
 
-    drawRoundedRect(ctx, 270, 300, 310, 38, 6, '#F1F5F9', '#64748B', 1.8);
-    ctx.fillStyle = '#1E293B';
-    ctx.font = 'bold 13px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('PHÍM CÁCH (SPACEBAR) - Hai ngón cái', 425, 319);
+    // Phím Cách (Spacebar)
+    drawRoundedRect(ctx, 226, 270, 308, 28, 6, '#F1F5F9', '#64748B', 2);
 
-    drawRoundedRect(ctx, 40, 350, 680, 38, 8, '#FFFBEB', '#F59E0B', 1.4);
-    ctx.fillStyle = '#92400E';
-    ctx.font = 'bold 12.5px "Times New Roman", Arial';
-    ctx.fillText('Hai ngón trỏ đặt lên hai phím có gai F và J • Các ngón còn lại đặt nhẹ lên A S D và K L ;', 380, 369);
+    // Hình ảnh trực quan hai bàn tay đặt nhẹ lên hàng phím cơ sở
+    ctx.save();
+    ctx.fillStyle = 'rgba(253, 186, 116, 0.82)';
+    ctx.strokeStyle = '#C2410C';
+    ctx.lineWidth = 2;
+
+    // Các ngón tay trái đặt trên A, S, D, F và ngón cái trên Spacebar
+    [102 + 16, 158 + 16, 214 + 16, 270 + 16].forEach((fx, i) => {
+        drawRoundedRect(ctx, fx - 12, 192 + (i === 0 ? 12 : 0), 24, 96, 12, 'rgba(253, 186, 116, 0.85)', '#EA580C', 2);
+    });
+    // Lòng bàn tay trái
+    ctx.beginPath();
+    ctx.ellipse(215, 338, 68, 44, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Các ngón tay phải đặt trên J, K, L, ;
+    [438 + 16, 494 + 16, 550 + 16, 606 + 16].forEach((fx, i) => {
+        drawRoundedRect(ctx, fx - 12, 192 + (i === 3 ? 12 : 0), 24, 96, 12, 'rgba(253, 186, 116, 0.85)', '#EA580C', 2);
+    });
+    // Lòng bàn tay phải
+    ctx.beginPath();
+    ctx.ellipse(545, 338, 68, 44, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
 };
 
 /**
- * 12. VẼ MÁY TÌM KIẾM THÔNG TIN TRÊN INTERNET
+ * 12. HÌNH ẢNH TRỰC QUAN MÀN HÌNH MÁY TÍNH HIỂN THỊ CÔNG CỤ TÌM KIẾM TRÊN INTERNET
  */
-const drawSearchEngineScene = (ctx: CanvasRenderingContext2D, primaryText: string) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#FFFFFF', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 36, 10, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('🌐 TRÌNH DUYỆT WEB - MÁY TÌM KIẾM THÔNG TIN (GOOGLE SEARCH)', 36, 34);
+const drawSearchEngineScene = (ctx: CanvasRenderingContext2D, _primaryText: string) => {
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#EFF6FF');
+    bgGrad.addColorStop(1, '#BFDBFE');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#2563EB', 2);
 
-    drawRoundedRect(ctx, 36, 64, 688, 28, 6, '#F1F5F9', '#CBD5E1', 1);
-    ctx.fillStyle = '#334155';
-    ctx.font = '12px Arial';
-    ctx.fillText('🔒 https://www.google.com.vn', 50, 78);
+    // Mặt bàn gỗ
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
 
-    ctx.font = 'bold 26px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#2563EB';
-    ctx.fillText('MÁY TÌM KIẾM', 380, 124);
+    // Chân đế màn hình
+    drawRoundedRect(ctx, 352, 304, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 346, 168, 16, 8, '#64748B', '#1E293B', 2);
 
-    drawRoundedRect(ctx, 120, 144, 520, 42, 21, '#FFFFFF', '#2563EB', 2);
-    const quotedMatch = primaryText.match(/"([^"]{3,45})"/);
-    const sampleKeyword = quotedMatch ? quotedMatch[1] : 'Khám phá thông tin bài học lớp em';
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`🔍 Từ khóa tìm kiếm: "${sampleKeyword}"`, 144, 166);
+    // Màn hình máy tính 3D
+    drawRoundedRect(ctx, 74, 22, 612, 286, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 88, 36, 584, 254, 8, '#FFFFFF', '#CBD5E1', 1.5);
 
-    drawRoundedRect(ctx, 64, 204, 632, 82, 8, '#F8FAFC', '#CBD5E1', 1.5);
-    ctx.fillStyle = '#1D4ED8';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.fillText('1. Trang thông tin giáo dục dành cho học sinh Tiểu học', 82, 228);
-    ctx.fillStyle = '#15803D';
-    ctx.font = '11.5px Arial';
-    ctx.fillText('https://hoclieuso.edu.vn/bai-hoc-truc-quan', 82, 246);
-    ctx.fillStyle = '#334155';
-    ctx.font = '12.5px "Times New Roman", Arial';
-    ctx.fillText('Kết quả tìm kiếm cung cấp văn bản, hình ảnh và video minh họa đúng từ khóa.', 82, 268);
+    // Thanh trình duyệt
+    drawRoundedRect(ctx, 88, 36, 584, 28, 6, '#0284C7');
+    ['#EF4444', '#F59E0B', '#22C55E'].forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(106 + i * 15, 50, 5, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+    });
+    drawRoundedRect(ctx, 160, 42, 496, 16, 8, '#FFFFFF');
 
-    drawRoundedRect(ctx, 64, 298, 632, 82, 8, '#F8FAFC', '#CBD5E1', 1.5);
-    ctx.fillStyle = '#1D4ED8';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.fillText('2. Thư viện hình ảnh và video khoa học thiếu nhi', 82, 322);
-    ctx.fillStyle = '#15803D';
-    ctx.font = '11.5px Arial';
-    ctx.fillText('https://thuvienthieunhi.vn/kham-pha', 82, 340);
-    ctx.fillStyle = '#334155';
-    ctx.font = '12.5px "Times New Roman", Arial';
-    ctx.fillText('Hướng dẫn chọn lọc nguồn thông tin an toàn, chính thống và tôn trọng bản quyền.', 82, 362);
+    // Biểu tượng màu sắc của máy tìm kiếm
+    const logoColors = ['#2563EB', '#EA4335', '#FBBC05', '#2563EB', '#34A853', '#EA4335'];
+    logoColors.forEach((col, idx) => {
+        ctx.beginPath();
+        ctx.arc(318 + idx * 24, 92, 9, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+    });
+
+    // Thanh ô tìm kiếm và kính lúp trực quan
+    drawRoundedRect(ctx, 166, 118, 428, 40, 20, '#F8FAFC', '#2563EB', 2.5);
+    ctx.beginPath();
+    ctx.arc(194, 138, 9, 0, Math.PI * 2);
+    ctx.strokeStyle = '#2563EB';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(201, 145);
+    ctx.lineTo(209, 153);
+    ctx.stroke();
+
+    drawRoundedRect(ctx, 222, 132, 240, 12, 6, '#3B82F6');
+    drawRoundedRect(ctx, 526, 124, 58, 28, 14, '#2563EB');
+
+    // Các thẻ kết quả tìm kiếm trực quan có thumbnail hình ảnh và dòng mô tả
+    [174, 232].forEach((ry, idx) => {
+        drawRoundedRect(ctx, 124, ry, 512, 48, 8, '#F8FAFC', '#CBD5E1', 1.5);
+        drawRoundedRect(ctx, 136, ry + 8, 56, 32, 4, idx === 0 ? '#DBEAFE' : '#DCFCE7', idx === 0 ? '#3B82F6' : '#22C55E', 1.2);
+        drawRoundedRect(ctx, 204, ry + 10, 210, 10, 4, '#1D4ED8');
+        drawRoundedRect(ctx, 204, ry + 26, 320, 8, 4, '#64748B');
+    });
 };
 
 /**
- * 13. VẼ AN TOÀN THÔNG TIN, BẢO MẬT & BẢN QUYỀN SỐ
+ * 13. HÌNH ẢNH TRỰC QUAN KHIÊN BẢO MẬT, Ổ KHÓA MẬT KHẨU & MÀN HÌNH MÁY TÍNH AN TOÀN
+ * (Tuyệt đối không vẽ 4 ô chữ quy tắc kiểu infographic)
  */
 const drawDigitalSafetyScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F0FDF4', '#16A34A', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 38, 10, '#16A34A');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('🛡️ QUY TẮC AN TOÀN THÔNG TIN & KĨ NĂNG CÔNG DÂN SỐ', 380, 35);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#ECFDF5');
+    bgGrad.addColorStop(1, '#A7F3D0');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#10B981', 2);
 
-    const rules = [
-        { x: 32, y: 74, title: '1. Bảo vệ thông tin cá nhân', desc: 'Không chia sẻ mật khẩu, địa chỉ nhà, số điện thoại cho người lạ trên mạng.', color: '#0284C7', bg: '#EFF6FF' },
-        { x: 392, y: 74, title: '2. Sử dụng mật khẩu mạnh', desc: 'Kết hợp chữ hoa, chữ thường, chữ số và ký tự đặc biệt để bảo vệ tài khoản.', color: '#16A34A', bg: '#FFFFFF' },
-        { x: 32, y: 234, title: '3. Tôn trọng bản quyền số', desc: 'Ghi rõ nguồn tác giả khi sử dụng văn bản, hình ảnh, video trên Internet.', color: '#D97706', bg: '#FFFBEB' },
-        { x: 392, y: 234, title: '4. Ứng xử văn minh & An toàn', desc: 'Chỉ truy cập trang web lành mạnh; báo ngay cho thầy cô, cha mẹ khi gặp rủi ro.', color: '#7C3AED', bg: '#F5F3FF' }
-    ];
+    // Mặt bàn gỗ
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
 
-    rules.forEach(r => {
-        drawRoundedRect(ctx, r.x, r.y, 336, 142, 10, r.bg, r.color, 1.8);
-        ctx.fillStyle = r.color;
-        ctx.font = 'bold 14.5px "Times New Roman", Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(r.title, r.x + 18, r.y + 34);
+    // Chân đế & Màn hình máy tính
+    drawRoundedRect(ctx, 352, 304, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 346, 168, 16, 8, '#64748B', '#1E293B', 2);
+    drawRoundedRect(ctx, 96, 26, 568, 282, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 110, 40, 540, 250, 8, '#F8FAFC', '#CBD5E1', 1.5);
 
-        ctx.fillStyle = '#1E293B';
-        ctx.font = '13px "Times New Roman", Arial';
-        const lines = wrapCanvasText(ctx, r.desc, 300, 3);
-        lines.forEach((line, idx) => {
-            ctx.fillText(line, r.x + 18, r.y + 66 + idx * 22);
-        });
-    });
+    // Khung đăng nhập bảo mật ở trung tâm màn hình
+    drawRoundedRect(ctx, 160, 72, 260, 186, 12, '#FFFFFF', '#0284C7', 2);
+    // Avatar người dùng
+    ctx.beginPath();
+    ctx.arc(290, 114, 24, 0, Math.PI * 2);
+    ctx.fillStyle = '#DBEAFE';
+    ctx.fill();
+    ctx.strokeStyle = '#2563EB';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(290, 108, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#2563EB';
+    ctx.fill();
+
+    // Ô mật khẩu có các dấu sao/chấm tròn bảo mật
+    drawRoundedRect(ctx, 190, 154, 200, 34, 8, '#F1F5F9', '#3B82F6', 1.8);
+    for (let i = 0; i < 7; i++) {
+        ctx.beginPath();
+        ctx.arc(214 + i * 24, 171, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#0F172A';
+        ctx.fill();
+    }
+    drawRoundedRect(ctx, 230, 204, 120, 32, 8, '#16A34A');
+
+    // Chiếc khiên bảo vệ & ổ khóa vàng 3D trực quan bên phải màn hình
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(526, 76);
+    ctx.lineTo(598, 102);
+    ctx.lineTo(598, 172);
+    ctx.quadraticCurveTo(598, 232, 526, 260);
+    ctx.quadraticCurveTo(454, 232, 454, 172);
+    ctx.lineTo(454, 102);
+    ctx.closePath();
+    ctx.fillStyle = '#10B981';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#047857';
+    ctx.stroke();
+
+    // Ổ khóa 3D bên trong khiên
+    ctx.beginPath();
+    ctx.arc(526, 148, 20, Math.PI, 0, false);
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#FEF08A';
+    ctx.stroke();
+    drawRoundedRect(ctx, 498, 148, 56, 46, 8, '#FACC15', '#CA8A04', 2.5);
+    ctx.beginPath();
+    ctx.arc(526, 168, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#713F12';
+    ctx.fill();
+    ctx.restore();
 };
 
 /**
- * 14. VẼ CÂY THƯ MỤC & TỆP TIN (FILE EXPLORER)
+ * 14. HÌNH ẢNH TRỰC QUAN CỬA SỔ QUẢN LÝ TỆP VÀ THƯ MỤC TRÊN MÀN HÌNH MÁY TÍNH
  */
 const drawFileFolderScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#FFFFFF', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 38, 10, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('📁 CỬA SỔ QUẢN LÝ TỆP VÀ THƯ MỤC (FILE EXPLORER)', 36, 35);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F0F9FF');
+    bgGrad.addColorStop(1, '#BAE6FD');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
 
-    drawRoundedRect(ctx, 32, 68, 230, 318, 8, '#F8FAFC', '#CBD5E1', 1.5);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.fillText('CÂY THƯ MỤC:', 48, 94);
+    // Mặt bàn gỗ & chân màn hình
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
+    drawRoundedRect(ctx, 352, 304, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 346, 168, 16, 8, '#64748B', '#1E293B', 2);
 
-    const treeItems = [
-        { indent: 0, text: '💻 This PC (Máy tính)', active: false },
-        { indent: 14, text: '💽 Ổ đĩa (D:)', active: false },
-        { indent: 28, text: '📂 Học tập', active: true },
-        { indent: 42, text: '📁 Môn Tin học', active: false },
-        { indent: 42, text: '📁 Môn Công nghệ', active: false },
-        { indent: 42, text: '📁 Môn Tiếng Việt', active: false },
-        { indent: 42, text: '📁 Hình ảnh minh họa', active: false }
-    ];
+    // Khung màn hình máy tính
+    drawRoundedRect(ctx, 64, 20, 632, 290, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 78, 34, 604, 258, 8, '#FFFFFF', '#CBD5E1', 1.5);
 
-    treeItems.forEach((item, idx) => {
-        const y = 126 + idx * 34;
-        if (item.active) {
-            drawRoundedRect(ctx, 42, y - 16, 210, 28, 5, '#DBEAFE', '#3B82F6', 1);
-        }
-        ctx.fillStyle = item.active ? '#1D4ED8' : '#334155';
-        ctx.font = item.active ? 'bold 13px Arial' : '13px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(item.text, 50 + item.indent, y);
+    // Thanh tiêu đề File Explorer
+    drawRoundedRect(ctx, 78, 34, 604, 28, 6, '#F59E0B');
+    ['#EF4444', '#FBBF24', '#22C55E'].forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(96 + i * 15, 48, 5, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
     });
 
-    drawRoundedRect(ctx, 276, 68, 452, 318, 8, '#FFFFFF', '#CBD5E1', 1.5);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.fillText('CÁC THƯ MỤC CON VÀ TỆP TRONG THƯ MỤC "HỌC TẬP":', 294, 94);
+    // Ngăn bên trái: Cây thư mục trực quan bằng biểu tượng Folder
+    drawRoundedRect(ctx, 90, 72, 170, 208, 6, '#F8FAFC', '#CBD5E1', 1.5);
+    [0, 1, 2, 3, 4].forEach(idx => {
+        const indent = idx === 0 ? 0 : idx === 1 ? 14 : 28;
+        const fy = 88 + idx * 36;
+        drawRoundedRect(ctx, 104 + indent, fy, 24, 18, 3, idx === 2 ? '#F59E0B' : '#FBBF24', '#D97706', 1.2);
+        drawRoundedRect(ctx, 134 + indent, fy + 5, 76, 8, 4, idx === 2 ? '#2563EB' : '#94A3B8');
+    });
 
-    const cards = [
-        { x: 294, y: 118, label: 'Thư mục Tin học', type: '📁 THƯ MỤC', color: '#F59E0B', bg: '#FEF3C7' },
-        { x: 438, y: 118, label: 'Thư mục Toán', type: '📁 THƯ MỤC', color: '#F59E0B', bg: '#FEF3C7' },
-        { x: 582, y: 118, label: 'Bai_Tap_1.docx', type: '📄 TỆP VĂN BẢN', color: '#2563EB', bg: '#DBEAFE' },
-        { x: 294, y: 238, label: 'Hinh_Ve.png', type: '🖼️ TỆP HÌNH ẢNH', color: '#16A34A', bg: '#DCFCE7' },
-        { x: 438, y: 238, label: 'Thuyet_Trinh.pptx', type: '📊 TỆP TRÌNH CHIẾU', color: '#EA580C', bg: '#FFEDD5' },
-        { x: 582, y: 238, label: 'Du_An_Scratch.sb3', type: '🧩 TỆP SCRATCH', color: '#7C3AED', bg: '#EDE9FE' }
-    ];
+    // Ngăn bên phải: Các biểu tượng Thư mục màu vàng 3D và Tệp tài liệu trực quan
+    drawRoundedRect(ctx, 272, 72, 396, 208, 6, '#FFFFFF', '#CBD5E1', 1.5);
+    const folderCols = [302, 422, 542];
+    folderCols.forEach(fx => {
+        // Biểu tượng Folder 3D màu vàng
+        drawRoundedRect(ctx, fx, 94, 34, 10, 3, '#D97706');
+        drawRoundedRect(ctx, fx, 100, 84, 58, 6, '#FBBF24', '#D97706', 2);
+        drawRoundedRect(ctx, fx + 12, 166, 60, 8, 4, '#64748B');
+    });
 
-    cards.forEach(c => {
-        drawRoundedRect(ctx, c.x, c.y, 130, 96, 8, c.bg, c.color, 1.5);
-        ctx.fillStyle = c.color;
-        ctx.font = 'bold 11.5px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(c.type, c.x + 65, c.y + 34);
-        ctx.fillStyle = '#0F172A';
-        ctx.font = 'bold 12.5px "Times New Roman", Arial';
-        ctx.fillText(c.label, c.x + 65, c.y + 66);
+    // Hàng dưới: Các biểu tượng tệp tin (Văn bản, Hình ảnh, Trình chiếu)
+    const fileColors = ['#2563EB', '#16A34A', '#EA580C'];
+    folderCols.forEach((fx, i) => {
+        drawRoundedRect(ctx, fx + 12, 190, 60, 68, 6, '#F8FAFC', fileColors[i], 2);
+        drawRoundedRect(ctx, fx + 22, 204, 40, 14, 3, fileColors[i]);
+        drawRoundedRect(ctx, fx + 22, 226, 40, 6, 3, '#94A3B8');
+        drawRoundedRect(ctx, fx + 22, 238, 28, 6, 3, '#94A3B8');
     });
 };
 
 /**
- * 15. VẼ MÔI TRƯỜNG LẬP TRÌNH TRỰC QUAN SCRATCH
+ * 15. HÌNH ẢNH TRỰC QUAN MÀN HÌNH LẬP TRÌNH KÉO THẢ KHỐI LỆNH SCRATCH
  */
 const drawScratchProgrammingScene = (ctx: CanvasRenderingContext2D) => {
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#F8FAFC', '#7C3AED', 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 38, 10, '#7C3AED');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('🧩 MÔI TRƯỜNG LẬP TRÌNH TRỰC QUAN SCRATCH & KHỐI LỆNH', 36, 35);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F5F3FF');
+    bgGrad.addColorStop(1, '#DDD6FE');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#7C3AED', 2);
 
-    drawRoundedRect(ctx, 32, 68, 380, 318, 8, '#FFFFFF', '#DDD6FE', 1.5);
-    ctx.fillStyle = '#4C1D95';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.fillText('KỊCH BẢN KHỐI LỆNH ĐIỀU KHIỂN:', 48, 94);
+    // Mặt bàn gỗ & Chân màn hình
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
+    drawRoundedRect(ctx, 352, 304, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 346, 168, 16, 8, '#64748B', '#1E293B', 2);
 
-    const blocks = [
-        { y: 116, text: '⚑ Khi bấm vào cờ xanh (Sự kiện)', color: '#F59E0B' },
-        { y: 164, text: '↻ Lặp lại 4 lần (Điều khiển)', color: '#D97706' },
-        { y: 212, text: '   ➜ Di chuyển 100 bước (Chuyển động)', color: '#2563EB' },
-        { y: 260, text: '   ↻ Xoay phải 90 độ (Chuyển động)', color: '#2563EB' },
-        { y: 308, text: '💬 Nói "Hoàn thành!" trong 2 giây (Hiển thị)', color: '#7C3AED' }
-    ];
+    // Màn hình máy tính hiển thị giao diện Scratch
+    drawRoundedRect(ctx, 64, 20, 632, 290, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 78, 34, 604, 258, 8, '#F8FAFC', '#CBD5E1', 1.5);
+    drawRoundedRect(ctx, 78, 34, 604, 26, 6, '#7C3AED');
 
-    blocks.forEach(b => {
-        drawRoundedRect(ctx, 48, b.y, 344, 36, 6, b.color);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 13px Arial';
-        ctx.textAlign = 'left';
-        ctx.fillText(b.text, 64, b.y + 18);
+    // Vùng ghép các khối lệnh đầy màu sắc bên trái
+    drawRoundedRect(ctx, 90, 68, 280, 212, 8, '#FFFFFF', '#DDD6FE', 1.5);
+    const blockColors = ['#F59E0B', '#D97706', '#2563EB', '#2563EB', '#7C3AED'];
+    blockColors.forEach((col, idx) => {
+        const indent = idx === 2 || idx === 3 ? 22 : 0;
+        drawRoundedRect(ctx, 110 + indent, 84 + idx * 36, 210 - indent, 30, 6, col, '#1E293B', 1);
+        drawRoundedRect(ctx, 126 + indent, 95 + idx * 36, 120, 8, 4, '#FFFFFF');
     });
 
-    drawRoundedRect(ctx, 428, 68, 300, 318, 8, '#FFFFFF', '#CBD5E1', 1.5);
-    ctx.fillStyle = '#1E293B';
-    ctx.font = 'bold 13.5px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('SÂN KHẤU BIỂU DIỄN (STAGE)', 578, 94);
+    // Sân khấu biểu diễn (Stage) và nhân vật chú mèo/robot bên phải
+    drawRoundedRect(ctx, 382, 68, 286, 212, 8, '#FFFFFF', '#CBD5E1', 1.5);
+    drawRoundedRect(ctx, 396, 82, 258, 184, 6, '#F0FDF4', '#86EFAC', 1.5);
 
-    drawRoundedRect(ctx, 446, 112, 264, 218, 6, '#F0FDF4', '#86EFAC', 1.5);
+    // Hình vuông quỹ đạo di chuyển của nhân vật trên sân khấu
     ctx.strokeStyle = '#2563EB';
     ctx.lineWidth = 3;
-    ctx.strokeRect(496, 152, 100, 100);
+    ctx.strokeRect(436, 116, 112, 112);
 
+    // Nhân vật hoạt hình trực quan trên sân khấu
     ctx.beginPath();
-    ctx.arc(616, 206, 28, 0, Math.PI * 2);
+    ctx.arc(576, 174, 28, 0, Math.PI * 2);
     ctx.fillStyle = '#F97316';
     ctx.fill();
+    ctx.strokeStyle = '#C2410C';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Đôi mắt nhân vật
+    ctx.beginPath();
+    ctx.arc(566, 168, 5, 0, Math.PI * 2);
+    ctx.arc(586, 168, 5, 0, Math.PI * 2);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 12px Arial';
-    ctx.fillText('Nhân vật', 616, 206);
-
-    drawBadgeLabel(ctx, 'Kết quả chạy chương trình', 578, 356, '#DCFCE7', '#16A34A', '#14532D');
+    ctx.fill();
 };
 
 /**
- * 16. VẼ GIAO DIỆN PHẦN MỀM WORD / POWERPOINT / PAINT (CHỈ KHI BÀI HỌC DẠY VỀ PHẦN MỀM ĐÓ)
+ * 16. HÌNH ẢNH TRỰC QUAN MÀN HÌNH MÁY TÍNH HIỂN THỊ PHẦN MỀM SOẠN THẢO / TRÌNH CHIẾU / ĐỒ HỌA PAINT
  */
-const drawOfficeOrPaintScene = (ctx: CanvasRenderingContext2D, subjectLower: string, cleanDesc: string) => {
+const drawOfficeOrPaintScene = (ctx: CanvasRenderingContext2D, subjectLower: string, _cleanDesc: string) => {
     const isPresentation =
         subjectLower.includes('phần mềm trình chiếu') ||
         subjectLower.includes('powerpoint') ||
@@ -2113,50 +1869,81 @@ const drawOfficeOrPaintScene = (ctx: CanvasRenderingContext2D, subjectLower: str
         subjectLower.includes('tô màu');
 
     const themeColor = isPresentation ? '#D97706' : isPaint ? '#EA580C' : '#2563EB';
-    const headerTitle = isPresentation
-        ? '📊 GIAO DIỆN PHẦN MỀM TRÌNH CHIẾU POWERPOINT'
-        : isPaint
-            ? '🎨 GIAO DIỆN PHẦN MỀM ĐỒ HỌA PAINT'
-            : '📝 GIAO DIỆN PHẦN MỀM SOẠN THẢO VĂN BẢN WORD';
 
-    drawRoundedRect(ctx, 16, 16, 728, 388, 12, '#FFFFFF', themeColor, 2.5);
-    drawRoundedRect(ctx, 16, 16, 728, 38, 10, themeColor);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 14px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(headerTitle, 36, 35);
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F8FAFC');
+    bgGrad.addColorStop(1, '#E2E8F0');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, themeColor, 2);
 
-    drawRoundedRect(ctx, 32, 66, 696, 38, 6, '#F1F5F9', '#CBD5E1', 1);
-    ctx.fillStyle = '#1E293B';
-    ctx.font = 'bold 12.5px Arial';
-    if (isPaint) {
-        ctx.fillText('Công cụ: [Bút chì ✏️]  [Tô màu 🪣]  [Tẩy 🧽]  |  Hình mẫu: [⬜] [◯] [△]  |  Bảng màu: 🔴 🟠 🟡 🟢 🔵', 48, 85);
-    } else {
-        ctx.fillText('Phông chữ: Times New Roman  |  Cỡ chữ: 14  |  [B]  [I]  [U]  |  Căn lề  |  Chèn Hình ảnh', 48, 85);
-    }
+    // Mặt bàn gỗ & chân màn hình
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
+    drawRoundedRect(ctx, 352, 304, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 346, 168, 16, 8, '#64748B', '#1E293B', 2);
 
-    drawRoundedRect(ctx, 32, 116, 696, 272, 8, '#F8FAFC', '#94A3B8', 1.5);
-    drawRoundedRect(ctx, 68, 134, 624, 236, 6, '#FFFFFF', '#CBD5E1', 1);
+    // Màn hình máy tính 3D
+    drawRoundedRect(ctx, 64, 20, 632, 290, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 78, 34, 604, 258, 8, '#FFFFFF', '#CBD5E1', 1.5);
+    drawRoundedRect(ctx, 78, 34, 604, 28, 6, themeColor);
 
-    ctx.fillStyle = themeColor;
-    ctx.font = 'bold 16px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(
-        isPresentation
-            ? 'TRANG CHIẾU THỰC HÀNH'
-            : isPaint
-                ? 'VÙNG VẼ THỰC HÀNH'
-                : 'TRANG SOẠN THẢO VĂN BẢN',
-        380,
-        172
-    );
-
-    ctx.fillStyle = '#0F172A';
-    ctx.font = '13.5px "Times New Roman", Arial';
-    const descLines = wrapCanvasText(ctx, cleanDesc, 560, 4);
-    descLines.forEach((line, idx) => {
-        ctx.fillText(line, 380, 214 + idx * 24);
+    // Thanh công cụ trực quan (Ribbon)
+    drawRoundedRect(ctx, 90, 68, 580, 32, 6, '#F1F5F9', '#CBD5E1', 1);
+    const paletteColors = ['#EF4444', '#F97316', '#FACC15', '#22C55E', '#3B82F6', '#8B5CF6'];
+    paletteColors.forEach((col, idx) => {
+        ctx.beginPath();
+        ctx.arc(114 + idx * 24, 84, 8, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
     });
+
+    // Trang giấy / Trang chiếu / Khung vẽ trực quan ở giữa màn hình
+    drawRoundedRect(ctx, 114, 110, 532, 168, 8, '#FFFFFF', '#94A3B8', 1.5);
+    if (isPaint) {
+        // Bức tranh ngôi nhà, mặt trời và cây xanh đang vẽ trên Paint
+        ctx.beginPath();
+        ctx.arc(180, 148, 18, 0, Math.PI * 2);
+        ctx.fillStyle = '#FACC15';
+        ctx.fill();
+
+        drawRoundedRect(ctx, 310, 178, 110, 82, 4, '#FEF08A', '#CA8A04', 2);
+        ctx.beginPath();
+        ctx.moveTo(296, 178);
+        ctx.lineTo(365, 130);
+        ctx.lineTo(434, 178);
+        ctx.closePath();
+        ctx.fillStyle = '#EF4444';
+        ctx.fill();
+
+        drawRoundedRect(ctx, 510, 198, 20, 62, 3, '#78350F');
+        ctx.beginPath();
+        ctx.arc(520, 176, 32, 0, Math.PI * 2);
+        ctx.fillStyle = '#22C55E';
+        ctx.fill();
+    } else {
+        // Bố cục trang tài liệu / trang chiếu gồm dòng tiêu đề, các dòng văn bản và khung ảnh minh họa
+        drawRoundedRect(ctx, 146, 130, 240, 16, 4, themeColor);
+        drawRoundedRect(ctx, 146, 160, 260, 10, 4, '#64748B');
+        drawRoundedRect(ctx, 146, 180, 240, 10, 4, '#94A3B8');
+        drawRoundedRect(ctx, 146, 200, 250, 10, 4, '#94A3B8');
+        drawRoundedRect(ctx, 146, 220, 190, 10, 4, '#94A3B8');
+
+        drawRoundedRect(ctx, 436, 134, 176, 122, 8, '#E0F2FE', '#38BDF8', 1.5);
+        ctx.beginPath();
+        ctx.arc(474, 166, 14, 0, Math.PI * 2);
+        ctx.fillStyle = '#FACC15';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(436, 244);
+        ctx.lineTo(488, 188);
+        ctx.lineTo(540, 226);
+        ctx.lineTo(576, 198);
+        ctx.lineTo(612, 244);
+        ctx.closePath();
+        ctx.fillStyle = '#22C55E';
+        ctx.fill();
+    }
 };
 
 const normalizeImageDescKey = (rawDesc: string): string => {
@@ -2230,11 +2017,6 @@ const drawAiVerificationAndDigitalScreenScene = (
     ctx.textAlign = 'center';
     ctx.fillText('AI', 124, 95);
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 12px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('ChatGPT / Trợ lý AI', 140, 96);
-
     // Bong bóng câu hỏi của người dùng
     drawRoundedRect(ctx, 146, 118, leftW - 56, 36, 8, '#DBEAFE', '#60A5FA', 1.2);
     drawRoundedRect(ctx, 158, 128, leftW - 84, 7, 3, '#2563EB');
@@ -2245,7 +2027,6 @@ const drawAiVerificationAndDigitalScreenScene = (
     drawRoundedRect(ctx, 126, 176, leftW - 54, 7, 3, '#059669');
     drawRoundedRect(ctx, 126, 190, leftW - 64, 7, 3, '#10B981');
     drawRoundedRect(ctx, 126, 204, leftW - 88, 7, 3, '#10B981');
-    // Dấu chấm hỏi cần kiểm chứng trên thông tin AI
     drawNumberedCalloutCircle(ctx, '?', 114 + leftW - 44, 214, 13);
 
     // Thanh nhập câu hỏi dưới đáy khung chat
@@ -2256,11 +2037,6 @@ const drawAiVerificationAndDigitalScreenScene = (
     const rightW = 556 - leftW;
     drawRoundedRect(ctx, rightX, 76, rightW, 204, 10, '#FFFFFF', '#2563EB', 2);
     drawRoundedRect(ctx, rightX, 76, rightW, 32, 8, '#2563EB');
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 12px "Times New Roman", Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('🔍 Tra cứu & Kiểm chứng thông tin', rightX + 14, 96);
 
     // Ô tìm kiếm Google
     drawRoundedRect(ctx, rightX + 14, 118, rightW - 28, 28, 14, '#F8FAFC', '#3B82F6', 1.5);
@@ -2319,12 +2095,12 @@ const drawAiVerificationAndDigitalScreenScene = (
 
 /**
  * 18. HÌNH ẢNH TRỰC QUAN VẬT THỂ / HỌC CỤ / MÀN HÌNH ĐỐI TƯỢNG TRÊN BÀN GỖ
- * (Tuyệt đối KHÔNG vẽ sơ đồ tư duy mindmap, KHÔNG vẽ "Cấu trúc A / Cấu trúc B", KHÔNG vẽ hộp chữ "1. Bộ phận cấu tạo chính...")
+ * (Tuyệt đối KHÔNG vẽ sơ đồ tư duy mindmap, KHÔNG vẽ infographic)
  */
 const drawDirectVisualObjectFallback = (
     ctx: CanvasRenderingContext2D,
     subjectLower: string,
-    cleanDesc: string
+    _cleanDesc: string
 ) => {
     const isDigitalOrComputerTopic =
         subjectLower.includes('máy tính') ||
@@ -2365,14 +2141,14 @@ const drawDirectVisualObjectFallback = (
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.fill();
     drawRoundedRect(ctx, 115, 145, 190, 185, 16, '#FFFFFF', '#0284C7', 2.5);
-    drawRoundedRect(ctx, 133, 165, 154, 115, 12, '#E0F2FE', '#38BDF8', 1.8);
+    drawRoundedRect(ctx, 133, 165, 154, 145, 12, '#E0F2FE', '#38BDF8', 1.8);
 
     // Vật thể 3D trực quan trong khay 1
     ctx.beginPath();
-    ctx.arc(210, 222, 38, 0, Math.PI * 2);
+    ctx.arc(210, 236, 42, 0, Math.PI * 2);
     ctx.fillStyle = '#0284C7';
     ctx.fill();
-    drawRoundedRect(ctx, 182, 194, 56, 56, 10, '#38BDF8', '#0369A1', 2);
+    drawRoundedRect(ctx, 182, 208, 56, 56, 10, '#38BDF8', '#0369A1', 2);
 
     // Mô hình / Học cụ chính ở trung tâm - bên phải
     ctx.beginPath();
@@ -2380,15 +2156,12 @@ const drawDirectVisualObjectFallback = (
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.fill();
     drawRoundedRect(ctx, 380, 120, 270, 210, 18, '#FFFFFF', '#16A34A', 2.5);
-    drawRoundedRect(ctx, 402, 142, 226, 138, 12, '#F0FDF4', '#4ADE80', 1.8);
+    drawRoundedRect(ctx, 402, 142, 226, 164, 12, '#F0FDF4', '#4ADE80', 1.8);
 
     // Các khối chi tiết vật lý trực quan bên trong
-    drawRoundedRect(ctx, 424, 166, 82, 92, 10, '#22C55E', '#15803D', 2);
-    drawRoundedRect(ctx, 524, 166, 82, 42, 8, '#F59E0B', '#B45309', 2);
-    drawRoundedRect(ctx, 524, 216, 82, 42, 8, '#3B82F6', '#1D4ED8', 2);
-
-    const shortLabel = wrapCanvasText(ctx, cleanDesc.replace(/^[-–\*\s]+/, ''), 230, 1)[0];
-    drawBadgeLabel(ctx, shortLabel || 'Học cụ & Vật mẫu trực quan', 515, 304, '#ECFDF5', '#16A34A', '#065F46');
+    drawRoundedRect(ctx, 424, 174, 82, 104, 10, '#22C55E', '#15803D', 2);
+    drawRoundedRect(ctx, 524, 174, 82, 48, 8, '#F59E0B', '#B45309', 2);
+    drawRoundedRect(ctx, 524, 230, 82, 48, 8, '#3B82F6', '#1D4ED8', 2);
 };
 
 /**
@@ -2646,13 +2419,45 @@ export const renderPedagogicalIllustrationDataUrl = (
  * Tự động gọi AI tạo hình ảnh trực quan thực tế (giống hệt phong cách ảnh trực quan môn Công nghệ lớp 4)
  * bám sát 100% câu văn ngay phía trên và lưu vào bộ nhớ đệm `imageDataUrlCache` (theo cả `descKey` và `cacheKey`)
  * để hiển thị đồng nhất trên giao diện Xem trước và khi xuất file Word (.docx).
+ * Hỗ trợ linh hoạt cả 2 kiểu truyền tham số:
+ * - (plan, apiKey, lessonTitleFallback)
+ * - (plan, subject, grade, apiKey)
  */
 export const pregenerateLessonImagesWithAI = async (
     plan: LessonPlanResponse,
-    apiKey: string,
-    lessonTitleFallback: string = ''
+    arg2: string = '',
+    arg3: string = '',
+    arg4?: string
 ): Promise<void> => {
-    if (!plan || !Array.isArray(plan.periods) || !apiKey) return;
+    if (!plan || !Array.isArray(plan.periods)) return;
+
+    // Xác định chính xác apiKey dù được truyền ở vị trí arg2 hay arg4
+    const looksLikeApiKey = (val?: string) =>
+        Boolean(val && /^AIza[0-9A-Za-z_-]{20,}$/.test(val.trim()));
+
+    const envKey =
+        (typeof process !== 'undefined' && process.env && (process.env.GEMINI_API_KEY || process.env.API_KEY)) ||
+        ((import.meta as any).env && ((import.meta as any).env.VITE_GEMINI_API_KEY || (import.meta as any).env.VITE_API_KEY)) ||
+        '';
+
+    let resolvedApiKey = '';
+    if (looksLikeApiKey(arg4)) {
+        resolvedApiKey = arg4!.trim();
+    } else if (looksLikeApiKey(arg2)) {
+        resolvedApiKey = arg2.trim();
+    } else if (looksLikeApiKey(envKey)) {
+        resolvedApiKey = envKey.trim();
+    } else if (arg4 && arg4.trim().length > 15 && /^[\x20-\x7E]+$/.test(arg4.trim())) {
+        resolvedApiKey = arg4.trim();
+    } else if (arg2 && arg2.trim().length > 15 && /^[\x20-\x7E]+$/.test(arg2.trim())) {
+        resolvedApiKey = arg2.trim();
+    } else if (envKey && envKey.trim().length > 10) {
+        resolvedApiKey = envKey.trim();
+    }
+
+    if (!resolvedApiKey) return;
+
+    const lessonTitleFallback = arg4 !== undefined ? `${arg2} ${arg3}`.trim() : arg3;
 
     const tasks: Array<{ descKey: string; cacheKey: string; prompt: string }> = [];
     const seenDescKeys = new Set<string>();
@@ -2680,7 +2485,7 @@ export const pregenerateLessonImagesWithAI = async (
                             tasks.push({
                                 descKey,
                                 cacheKey,
-                                prompt: `Create a clean, realistic, direct visual illustration for a primary school textbook showing: ${coreDesc}. Context from the sentence immediately above: ${coreImmediate}. Style: High-clarity realistic 3D/photographic visual depiction of the exact objects, tools, materials, devices, or computer screen interface mentioned, placed on a clean tabletop or screen with natural studio lighting (like primary school Technology and Digital Skills textbook illustrations). STRICTLY FORBIDDEN: DO NOT generate an infographic, DO NOT generate a mindmap, DO NOT generate a flowchart, DO NOT draw text boxes or callout arrows, DO NOT include text banners, DO NOT draw a classroom with teacher and students.`
+                                prompt: `Generate a realistic, high-clarity 3D visual object illustration for a primary school textbook showing ONLY the physical object, tool, kit, or clean computer monitor screen described here: "${coreDesc}" (from context: "${coreImmediate}"). Place the object or computer monitor on a clean wooden tabletop with studio lighting, just like primary school Technology (Công nghệ lớp 4) textbook photos. ABSOLUTELY FORBIDDEN: NO text, NO words, NO labels, NO numbers, NO infographic, NO mindmap, NO diagram, NO chart, NO arrows, NO callout boxes, NO classroom scenes.`
                             });
                         }
                     } else if (!/^[-–\*\s]*(\[?\s*Tích\s*hợp\b)/i.test(line)) {
@@ -2693,11 +2498,10 @@ export const pregenerateLessonImagesWithAI = async (
 
     if (tasks.length === 0) return;
 
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: resolvedApiKey });
     const imageModels = [
         'gemini-2.5-flash-image',
-        'gemini-3.1-flash-image-preview',
-        'gemini-3.1-flash-lite-image'
+        'gemini-3.1-flash-image-preview'
     ];
 
     await Promise.all(
@@ -2709,7 +2513,7 @@ export const pregenerateLessonImagesWithAI = async (
                             model: modelName,
                             contents: task.prompt
                         }),
-                        new Promise<null>(resolve => setTimeout(() => resolve(null), 18000))
+                        new Promise<null>(resolve => setTimeout(() => resolve(null), 16000))
                     ]);
                     if (!res) continue;
                     const parts = (res as any)?.candidates?.[0]?.content?.parts || [];
@@ -2731,4 +2535,5 @@ export const pregenerateLessonImagesWithAI = async (
         })
     );
 };
+
 

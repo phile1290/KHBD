@@ -10,6 +10,37 @@ import {
     formatLessonTitleWithPeriod
 } from "../utils";
 import { pregenerateLessonImagesWithAI } from "../utils/lessonImageGenerator";
+import * as mammoth from "mammoth";
+
+// Bộ nhớ đệm Base64 để khi "Soạn tất cả các tuần" trên điện thoại / máy tính / Vercel không phải đọc lại tệp PDF nhiều lần
+const inMemoryBase64Cache = new Map<string, string>();
+
+const getCachedFileBase64 = async (file: File): Promise<string> => {
+    const cacheKey = `${file.name}_${file.size}_${file.lastModified}`;
+    if (inMemoryBase64Cache.has(cacheKey)) {
+        return inMemoryBase64Cache.get(cacheKey)!;
+    }
+    const data = await fileToBase64(file);
+    inMemoryBase64Cache.set(cacheKey, data);
+    return data;
+};
+
+export const resolveGeminiApiKey = (apiKey?: string): string => {
+    let key = (apiKey || "").trim();
+    if (!key) {
+        try {
+            key = ((import.meta as any).env?.VITE_GEMINI_API_KEY || "").trim();
+        } catch (e) {}
+    }
+    if (!key) {
+        try {
+            if (typeof process !== "undefined" && process.env) {
+                key = (process.env.GEMINI_API_KEY || process.env.API_KEY || "").trim();
+            }
+        } catch (e) {}
+    }
+    return key;
+};
 
 const LESSON_PLAN_RESPONSE_SCHEMA = {
     type: Type.OBJECT,
@@ -95,16 +126,30 @@ export const generateLessonPlan = async ({
     // Mỗi tuần luôn chỉ dạy 1 tiết học; một bài học có thể kéo dài qua nhiều tuần (Tiết 1, Tiết 2...)
     const numPeriods = 1;
     const totalDuration = parseInt(inputData.duration, 10) || 35;
-    
+
+    // XÁC ĐỊNH SỐ TIẾT VÀ TÊN BÀI HỌC GỐC NGAY TỪ ĐẦU (TRÁNH LỖI TEMPORAL DEAD ZONE)
+    const currentPeriodInLesson =
+        Number(inputData.periodIndexInLesson) ||
+        extractExplicitPeriodNumber(inputData.lessonName || '') ||
+        1;
+    const totalLessonPeriods = Math.max(Number(inputData.totalPeriodsInLesson) || 1, currentPeriodInLesson);
+    const baseLessonName = extractBaseLessonName(inputData.baseLessonName || inputData.lessonName || "Bài học");
+    const exactLessonTitleWithPeriod = formatLessonTitleWithPeriod(baseLessonName, currentPeriodInLesson);
+
+    const hasUploadedPdfSgk = (pdfFiles && pdfFiles.length > 0) || Boolean(pdfFile);
+    const hasUploadedImageSgk = images && images.length > 0;
+
     let contentInstruction = "";
-    if (sourceType === 'image') {
-        contentInstruction = `NGUỒN DỮ LIỆU GỐC BẮT BUỘC (THAM CHIẾU CHÍNH XÁC TUYỆT ĐỐI 100%): Sử dụng duy nhất nội dung từ các hình ảnh Sách giáo khoa (SGK) đính kèm của bài "${baseLessonName}".
+    if (hasUploadedImageSgk && (sourceType === 'image' || !hasUploadedPdfSgk)) {
+        contentInstruction = `NGUỒN DỮ LIỆU GỐC BẮT BUỘC (THAM CHIẾU CHÍNH XÁC TUYỆT ĐỐI 100%): Sử dụng duy nhất nội dung từ các hình ảnh Sách giáo khoa (SGK) đính kèm của bài "${baseLessonName}" (Môn ${inputData.subject} - Lớp ${inputData.grade}).
 - BẮT BUỘC đọc kỹ từng mục, từng hình ảnh, tình huống, nhân vật, hộp kiến thức/ghi nhớ và bài tập thực hành có trên trang ảnh SGK đính kèm.
 - NGHIÊM CẤM TUYỆT ĐỐI tự ý suy diễn, bịa đặt thêm bất kỳ cách làm, phương pháp, tiêu chí đánh giá, công cụ hay nội dung nào KHÔNG CÓ trong trang ảnh SGK đính kèm!`;
+    } else if (hasUploadedPdfSgk) {
+        contentInstruction = `NGUỒN DỮ LIỆU GỐC BẮT BUỘC (THAM CHIẾU CHÍNH XÁC TUYỆT ĐỐI 100%): File PDF Sách giáo khoa (SGK) môn ${inputData.subject} lớp ${inputData.grade} đính kèm.
+- NHIỆM VỤ SỐ 1 CỦA BẠN: Tìm đúng trang có tiêu đề chính xác là "${baseLessonName}" thuộc môn ${inputData.subject} lớp ${inputData.grade} trong file PDF SGK đính kèm, đọc và trích xuất chính xác tuyệt đối 100% các mục, tình huống khởi động, nhân vật, hội thoại, kênh hình, các cách thực hiện, hộp kiến thức/ghi nhớ và các câu hỏi/bài tập Luyện tập - Thực hành - Vận dụng có thật trong đúng bài học đó.
+- CẢNH BÁO NGHIÊM NGẶT: Nếu có nhiều bài cùng mang số thứ tự (ví dụ nhiều bài cùng ghi "Bài 2") ở các chủ đề hoặc lớp khác nhau, BẮT BUỘC chỉ đọc đúng bài có tên "${baseLessonName}" của Lớp ${inputData.grade}. NGHIÊM CẤM lấy nội dung của bài khác (như đánh giá địa điểm trên Google Maps của bài khác) ghép vào bài "${baseLessonName}"!`;
     } else {
-        contentInstruction = `NGUỒN DỮ LIỆU GỐC BẮT BUỘC (THAM CHIẾU CHÍNH XÁC TUYỆT ĐỐI 100%): File PDF Sách giáo khoa (SGK) đính kèm.
-- NHIỆM VỤ SỐ 1 CỦA BẠN: Tìm đúng trang của bài học "${baseLessonName}" trong file PDF SGK đính kèm, đọc và trích xuất chính xác tuyệt đối 100% các mục, tình huống khởi động, nhân vật, hội thoại, kênh hình, các cách thực hiện, hộp kiến thức/ghi nhớ và các câu hỏi/bài tập Luyện tập - Thực hành - Vận dụng có thật trong đúng bài học đó.
-- NGHIÊM CẤM TUYỆT ĐỐI tự ý bịa đặt thêm bất kỳ phương pháp, cách thức, tiêu chí đánh giá, công cụ hay kiến thức nào KHÔNG NẰM TRONG bài "${baseLessonName}" của file PDF SGK đính kèm! Không được lấy nội dung của bài khác ghép vào bài này!`;
+        contentInstruction = `NGUỒN DỮ LIỆU GỐC BẮT BUỘC (THAM CHIẾU CHÍNH XÁC TUYỆT ĐỐI 100%): Bám sát 100% nội dung bài học "${baseLessonName}" của môn ${inputData.subject} lớp ${inputData.grade} theo chương trình Sách giáo khoa GDPT 2018 hiện hành. Tuyệt đối không bịa đặt các khái niệm hay ví dụ của bài học khác nằm ngoài phạm vi bài học "${baseLessonName}".`;
     }
 
     const rawNotes = (inputData.integrationNotes || '').trim();
@@ -158,14 +203,6 @@ export const generateLessonPlan = async ({
   + TRONG MỤC YÊU CẦU CẦN ĐẠT (objectives): CHỈ CÓ các gạch đầu dòng (- ) về kiến thức, kỹ năng, năng lực, phẩm chất chuẩn của bài học SGK. TUYỆT ĐỐI KHÔNG CÓ dòng "- Tích hợp...".
   + Bài dạy này là bài học chuẩn kiến thức, kỹ năng theo chương trình.`;
     }
-
-    const currentPeriodInLesson =
-        Number(inputData.periodIndexInLesson) ||
-        extractExplicitPeriodNumber(inputData.lessonName || '') ||
-        1;
-    const totalLessonPeriods = Math.max(Number(inputData.totalPeriodsInLesson) || 1, currentPeriodInLesson);
-    const baseLessonName = extractBaseLessonName(inputData.baseLessonName || inputData.lessonName || "Bài học");
-    const exactLessonTitleWithPeriod = formatLessonTitleWithPeriod(baseLessonName, currentPeriodInLesson);
 
     const userPrompt = `
         THÔNG TIN CHUNG: Tuần ${inputData.week || '...'}, Môn ${inputData.subject || '...'}, Lớp ${inputData.grade || '...'}.
@@ -257,16 +294,9 @@ export const generateLessonPlan = async ({
             - BẮT BUỘC: Tổng số phút của cả 4 hoạt động cộng lại PHẢI BẰNG ĐÚNG CHÍNH XÁC ${totalDuration} phút.
     `;
 
-    let finalApiKey = apiKey;
-
+    const finalApiKey = resolveGeminiApiKey(apiKey);
     if (!finalApiKey) {
-        try {
-            finalApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
-        } catch(e) {}
-    }
-    
-    if (!finalApiKey) {
-        throw new Error("Vui lòng nhập Gemini API Key để tạo giáo án.");
+        throw new Error("Vui lòng nhập Gemini API Key ở thanh công cụ phía trên để tạo giáo án.");
     }
 
     const parts: any[] = [];
@@ -277,16 +307,38 @@ export const generateLessonPlan = async ({
             throw new Error(`Kích thước file ${file.name} vượt quá 100MB.`);
         }
 
+        const lowerName = file.name.toLowerCase();
+        if (
+            lowerName.endsWith('.docx') ||
+            lowerName.endsWith('.doc') ||
+            file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                if (result.value && result.value.trim()) {
+                    parts.push({
+                        text: `[NỘI DUNG VĂN BẢN TRÍCH XUẤT TỪ FILE WORD "${file.name}"]:\n${result.value.trim()}`
+                    });
+                    return;
+                }
+            } catch (docErr) {
+                console.warn(`Không thể đọc văn bản từ file Word ${file.name}:`, docErr);
+                return;
+            }
+        }
+
         let mimeType = file.type;
         if (!mimeType) {
-            if (file.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
-            else if (file.name.toLowerCase().endsWith('.png')) mimeType = 'image/png';
-            else if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
+            if (lowerName.endsWith('.pdf')) mimeType = 'application/pdf';
+            else if (lowerName.endsWith('.png')) mimeType = 'image/png';
+            else if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) mimeType = 'image/jpeg';
+            else if (lowerName.endsWith('.webp')) mimeType = 'image/webp';
             else mimeType = 'application/pdf';
         }
 
-        if (file.size <= 18 * 1024 * 1024) {
-            const base64Data = await fileToBase64(file);
+        if (file.size <= 19 * 1024 * 1024) {
+            const base64Data = await getCachedFileBase64(file);
             parts.push({
                 inlineData: {
                     data: base64Data,
@@ -303,36 +355,60 @@ export const generateLessonPlan = async ({
                 return;
             }
 
-            const ai = new GoogleGenAI({ apiKey: finalApiKey });
-            const uploaded = await ai.files.upload({ file: file, mimeType: mimeType } as any);
-            
-            if (uploadedFileCache) {
-                uploadedFileCache.set(cacheKey, { uri: uploaded.uri, mimeType: uploaded.mimeType, name: uploaded.name });
-            } else {
-                uploadedFileNames.push(uploaded.name);
-            }
+            try {
+                const ai = new GoogleGenAI({ apiKey: finalApiKey });
+                const uploaded = await ai.files.upload({ file: file, mimeType: mimeType } as any);
+                
+                if (uploadedFileCache) {
+                    uploadedFileCache.set(cacheKey, { uri: uploaded.uri, mimeType: uploaded.mimeType, name: uploaded.name });
+                } else {
+                    uploadedFileNames.push(uploaded.name);
+                }
 
-            parts.push({
-                fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }
-            });
+                parts.push({
+                    fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }
+                });
+            } catch (uploadErr) {
+                console.warn("File API upload fallback to inline base64:", uploadErr);
+                const base64Data = await getCachedFileBase64(file);
+                parts.push({
+                    inlineData: {
+                        data: base64Data,
+                        mimeType: mimeType
+                    }
+                });
+            }
         }
     };
     
-    if (sourceType === 'pdf') {
-        const effectivePdfFiles = pdfFiles.length > 0 ? pdfFiles : (pdfFile ? [pdfFile] : []);
-        if (effectivePdfFiles.length > 0) {
-            parts.push({ text: "DƯỚI ĐÂY LÀ (CÁC) FILE PDF SÁCH GIÁO KHOA CHÍNH THỨC CỦA MÔN HỌC (TRA CỨU VÀ TRÍCH XUẤT CHÍNH XÁC NỘI DUNG BÀI HỌC CẦN SOẠN):" });
-            for (const f of effectivePdfFiles) {
-                await uploadAndPush(f);
-            }
+    const allPdfCandidates = pdfFiles.length > 0 ? pdfFiles : (pdfFile ? [pdfFile] : []);
+    // Nếu giáo viên tải lên nhiều file PDF SGK của nhiều khối lớp khác nhau (VD: Lớp 3, Lớp 4, Lớp 5), ưu tiên lọc đúng file của khối lớp đang chọn
+    const targetGradeNum = String(inputData.grade || '').replace(/\D+/g, '').trim();
+    let effectivePdfFiles = allPdfCandidates;
+    if (allPdfCandidates.length > 1 && targetGradeNum) {
+        const gradeRegex = new RegExp(`(lớp|lop|khối|khoi|[\\s_\\-\\.])${targetGradeNum}([\\s_\\-\\.]|\\.pdf|$)`, 'i');
+        const otherGradeRegex = new RegExp(`(lớp|lop|khối|khoi|[\\s_\\-\\.])${['1','2','3','4','5'].filter(g => g !== targetGradeNum).join('|')}([\\s_\\-\\.]|\\.pdf|$)`, 'i');
+        const matchingGradeFiles = allPdfCandidates.filter(f => gradeRegex.test(f.name) || !otherGradeRegex.test(f.name));
+        if (matchingGradeFiles.length > 0) {
+            effectivePdfFiles = matchingGradeFiles;
         }
-    } else if (sourceType === 'image' && images.length > 0) {
+    }
+
+    if (effectivePdfFiles.length > 0 && (sourceType === 'pdf' || images.length === 0)) {
+        parts.push({ text: `DƯỚI ĐÂY LÀ (CÁC) FILE PDF SÁCH GIÁO KHOA CHÍNH THỨC CỦA MÔN ${inputData.subject.toUpperCase()} LỚP ${inputData.grade} (CHỈ TRA CỨU ĐÚNG BÀI "${baseLessonName}"):` });
+        for (const f of effectivePdfFiles) {
+            parts.push({ text: `[Tệp SGK đính kèm: "${f.name}"]` });
+            await uploadAndPush(f);
+        }
+    }
+    if (images.length > 0 && (sourceType === 'image' || effectivePdfFiles.length === 0)) {
+        parts.push({ text: "DƯỚI ĐÂY LÀ CÁC HÌNH ẢNH TRANG SÁCH GIÁO KHOA CHÍNH THỨC CỦA BÀI HỌC (ĐỌC KỸ VÀ TRÍCH XUẤT CHÍNH XÁC NỘI DUNG):" });
         for (const img of images) {
             await uploadAndPush(img.file);
         }
     }
 
-    if (referencePdfs && referencePdfs.length > 0) {
+    if (hasNotes && referencePdfs && referencePdfs.length > 0) {
         parts.push({ text: "DƯỚI ĐÂY LÀ (CÁC) FILE PDF TÀI LIỆU THAM KHẢO (SỬ DỤNG LÀM KHUNG CƠ SỞ CHO NỘI DUNG TÍCH HỢP):" });
         for (const ref of referencePdfs) {
             await uploadAndPush(ref);
@@ -340,38 +416,52 @@ export const generateLessonPlan = async ({
     }
 
     if (ppctFile) {
-        parts.push({ text: "DƯỚI ĐÂY LÀ FILE PDF PHÂN PHỐI CHƯƠNG TRÌNH (PPCT) CỦA MÔN HỌC (BẮT BUỘC ĐỐI CHIẾU CHÍNH XÁC TÊN BÀI VÀ SỐ TIẾT QUY ĐỊNH):" });
+        parts.push({ text: "DƯỚI ĐÂY LÀ FILE PHÂN PHỐI CHƯƠNG TRÌNH (PPCT) CỦA MÔN HỌC (BẮT BUỘC ĐỐI CHIẾU CHÍNH XÁC TÊN BÀI VÀ SỐ TIẾT QUY ĐỊNH):" });
         await uploadAndPush(ppctFile);
     }
 
     parts.push({ text: userPrompt });
 
     try {
-        // Sử dụng mô hình chuẩn của hệ thống kết hợp ThinkingLevel.MEDIUM (thay vì MINIMAL)
-        // để vừa tiết kiệm Token & hạn mức Quota, vừa kích hoạt tư duy chuyên sâu giúp bài soạn có chiều sâu sư phạm và đủ 4 hoạt động.
-        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
-        let delay = 2000;
+        // Danh sách model chuẩn tương thích hoàn toàn với mọi API Key trên AI Studio, Mobile, Desktop và Vercel
+        const modelsToTry = [
+            'gemini-2.5-flash',
+            'gemini-3-flash-preview',
+            'gemini-flash-latest',
+            'gemini-3.1-flash-lite-preview'
+        ];
+        let delay = 1500;
         const maxAttempts = 6;
 
         for (let i = 0; i < maxAttempts; i++) {
             const currentModel = modelsToTry[i % modelsToTry.length];
+            const isGemini3 = currentModel.startsWith('gemini-3');
             try {
                 const ai = new GoogleGenAI({
                     apiKey: finalApiKey
                 });
 
+                const config: any = {
+                    systemInstruction: SYSTEM_PROMPT,
+                    responseMimeType: "application/json",
+                    responseSchema: LESSON_PLAN_RESPONSE_SCHEMA,
+                    temperature: 0.15,
+                    maxOutputTokens: 32768,
+                };
+                if (isGemini3) {
+                    config.thinkingConfig = {
+                        thinkingLevel: ThinkingLevel.LOW
+                    };
+                } else if (currentModel.startsWith('gemini-2.5')) {
+                    config.thinkingConfig = {
+                        thinkingBudget: 1024
+                    };
+                }
+
                 const response = await ai.models.generateContent({
                     model: currentModel,
                     contents: { parts },
-                    config: {
-                        systemInstruction: SYSTEM_PROMPT,
-                        responseMimeType: "application/json",
-                        responseSchema: LESSON_PLAN_RESPONSE_SCHEMA,
-                        temperature: 0.15,
-                        thinkingConfig: {
-                            thinkingLevel: ThinkingLevel.MEDIUM
-                        }
-                    }
+                    config
                 });
                 const text = response.text;
 
@@ -388,22 +478,39 @@ export const generateLessonPlan = async ({
 
                 // Chuẩn hóa và đảm bảo tuyệt đối 100% mỗi tiết đều có đầy đủ 4 hoạt động theo đúng thứ tự
                 const finalPlan = ensureFourActivitiesInAllPeriods(parsed, inputData);
-                await pregenerateLessonImagesWithAI(finalPlan, finalApiKey, exactLessonTitleWithPeriod).catch(() => {});
                 return finalPlan;
             } catch (err: any) {
                 console.warn(`Gemini API retry warning (attempt ${i + 1}/${maxAttempts}, model ${currentModel}):`, err?.message || err);
 
-                const errMsg = err.message ? String(err.message).toLowerCase() : '';
-                const isRetryable = (
-                    errMsg.includes('quota') ||
-                    errMsg.includes('503') ||
-                    errMsg.includes('429') ||
+                const errMsg = err?.message ? String(err.message).toLowerCase() : JSON.stringify(err || '').toLowerCase();
+                const isInvalidApiKey =
+                    errMsg.includes('api_key_invalid') ||
+                    errMsg.includes('api key not valid') ||
+                    errMsg.includes('permission_denied');
+
+                if (isInvalidApiKey) {
+                    throw new Error("Gemini API Key không hợp lệ hoặc đã hết hạn. Vui lòng kiểm tra lại API Key ở góc trên cùng.");
+                }
+
+                const isFastSwitchError =
                     errMsg.includes('404') ||
                     errMsg.includes('not found') ||
                     errMsg.includes('not_found') ||
+                    errMsg.includes('400') ||
+                    errMsg.includes('invalid_argument');
+
+                const isRetryable = (
+                    isFastSwitchError ||
+                    errMsg.includes('quota') ||
+                    errMsg.includes('503') ||
+                    errMsg.includes('500') ||
+                    errMsg.includes('internal') ||
+                    errMsg.includes('unavailable') ||
+                    errMsg.includes('429') ||
                     errMsg.includes('resource_exhausted') ||
                     errMsg.includes('resource exhausted') ||
                     errMsg.includes('fetch') ||
+                    errMsg.includes('network') ||
                     errMsg.includes('json') ||
                     errMsg.includes('parse') ||
                     errMsg.includes('định dạng') ||
@@ -412,18 +519,23 @@ export const generateLessonPlan = async ({
                 );
 
                 if (i === maxAttempts - 1 || !isRetryable) {
-                    if (isRetryable) {
+                    if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('resource_exhausted')) {
                         throw new Error("API Key đã vượt giới hạn lượt gọi (Quota/429) sau nhiều lần thử lại. Vui lòng dùng API Key mới hoặc đợi vài phút.");
                     }
-                    throw new Error(err.message || "Lỗi không xác định khi gọi AI.");
+                    throw new Error(err?.message || "Lỗi không xác định khi gọi AI.");
+                }
+
+                if (isFastSwitchError) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    continue;
                 }
 
                 if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('resource_exhausted')) {
-                    delay = Math.max(delay, 4000);
+                    delay = Math.max(delay, 3500);
                 }
 
                 await new Promise(resolve => setTimeout(resolve, delay));
-                delay *= 1.4;
+                delay *= 1.3;
             }
         }
         throw new Error("Không thể kết nối với AI sau nhiều lần thử.");
@@ -445,38 +557,60 @@ export const extractLessonsFromPpct = async (
     ppctFile: File,
     apiKey: string
 ): Promise<PpctLesson[]> => {
-    let finalApiKey = apiKey;
-    if (!finalApiKey) {
-        try {
-            finalApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
-        } catch(e) {}
-    }
+    const finalApiKey = resolveGeminiApiKey(apiKey);
     
     if (!finalApiKey) {
-        throw new Error("Vui lòng nhập Gemini API Key để phân tích file Phân phối chương trình.");
+        throw new Error("Vui lòng nhập Gemini API Key ở thanh công cụ phía trên để phân tích file Phân phối chương trình.");
     }
 
     const ai = new GoogleGenAI({ apiKey: finalApiKey });
-
-    let mimeType = ppctFile.type || 'application/pdf';
-    if (!mimeType) {
-        if (ppctFile.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
-        else mimeType = 'application/pdf';
-    }
+    const fileNameLower = ppctFile.name.toLowerCase();
 
     let filePart: any;
     let uploadedName: string | null = null;
-    if (ppctFile.size <= 18 * 1024 * 1024) {
-        const base64Data = await fileToBase64(ppctFile);
-        filePart = {
-            inlineData: { data: base64Data, mimeType }
-        };
-    } else {
-        const uploaded = await ai.files.upload({ file: ppctFile, mimeType } as any);
-        uploadedName = uploaded.name;
-        filePart = {
-            fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }
-        };
+
+    if (fileNameLower.endsWith('.docx')) {
+        try {
+            const arrayBuffer = await ppctFile.arrayBuffer();
+            const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
+            if (html && html.trim().length > 0) {
+                filePart = {
+                    text: `DƯỚI ĐÂY LÀ NỘI DUNG BẢNG PHÂN PHỐI CHƯƠNG TRÌNH TRÍCH XUẤT TỪ TỆP WORD (${ppctFile.name}):\n${html.slice(0, 60000)}`
+                };
+            }
+        } catch (docxErr) {
+            console.warn("Mammoth docx parse fallback:", docxErr);
+        }
+    }
+
+    if (!filePart) {
+        let mimeType = ppctFile.type;
+        if (!mimeType) {
+            if (fileNameLower.endsWith('.pdf')) mimeType = 'application/pdf';
+            else if (fileNameLower.endsWith('.png')) mimeType = 'image/png';
+            else if (fileNameLower.endsWith('.jpg') || fileNameLower.endsWith('.jpeg')) mimeType = 'image/jpeg';
+            else mimeType = 'application/pdf';
+        }
+
+        if (ppctFile.size <= 19 * 1024 * 1024) {
+            const base64Data = await getCachedFileBase64(ppctFile);
+            filePart = {
+                inlineData: { data: base64Data, mimeType }
+            };
+        } else {
+            try {
+                const uploaded = await ai.files.upload({ file: ppctFile, mimeType } as any);
+                uploadedName = uploaded.name;
+                filePart = {
+                    fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }
+                };
+            } catch (uploadErr) {
+                const base64Data = await getCachedFileBase64(ppctFile);
+                filePart = {
+                    inlineData: { data: base64Data, mimeType }
+                };
+            }
+        }
     }
 
     const prompt = `
@@ -525,26 +659,42 @@ TUYỆT ĐỐI KHÔNG thêm văn bản giải thích hay markdown bên ngoài ch
 
     try {
         let responseText = '';
-        const ppctModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+        const ppctModels = [
+            'gemini-2.5-flash',
+            'gemini-3-flash-preview',
+            'gemini-flash-latest',
+            'gemini-3.1-flash-lite-preview'
+        ];
         let lastError: any = null;
 
         for (const ppctModel of ppctModels) {
+            const isGemini3 = ppctModel.startsWith('gemini-3');
             try {
+                const config: any = {
+                    responseMimeType: "application/json",
+                    temperature: 0.1
+                };
+                if (isGemini3) {
+                    config.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+                }
+
                 const response = await ai.models.generateContent({
                     model: ppctModel,
                     contents: [
                         filePart,
                         { text: prompt }
                     ],
-                    config: {
-                        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
-                    }
+                    config
                 });
                 responseText = response.text || '';
                 if (responseText) break;
-            } catch(e) {
+            } catch(e: any) {
                 lastError = e;
                 console.warn(`PPCT extraction attempt with ${ppctModel} failed:`, e);
+                const msg = String(e?.message || '').toLowerCase();
+                if (msg.includes('api_key_invalid') || msg.includes('api key not valid')) {
+                    throw new Error("Gemini API Key không hợp lệ. Vui lòng kiểm tra lại API Key.");
+                }
             }
         }
 
@@ -579,3 +729,4 @@ TUYỆT ĐỐI KHÔNG thêm văn bản giải thích hay markdown bên ngoài ch
         }
     }
 };
+
