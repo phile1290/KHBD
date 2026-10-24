@@ -940,90 +940,207 @@ const drawElectricalApplianceOrLampScene = (ctx: CanvasRenderingContext2D) => {
 };
 
 /**
- * 5. HÌNH ẢNH CHẬU HOA / CÂY CẢNH / GIEO HẠT & DỤNG CỤ TRỒNG CÂY
+ * 5. HÌNH ẢNH TRỰC QUAN CHẬU TRỒNG HOA, GIÁ THỂ (XƠ DỪA, TRẤU HUN, MÙN CƯA) & CÂY CẢNH
  */
-const drawPlantAndGardeningScene = (ctx: CanvasRenderingContext2D) => {
+const drawPlantAndGardeningScene = (ctx: CanvasRenderingContext2D, subjectLower: string = '') => {
     const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
-    bgGrad.addColorStop(0, '#F0FDF4');
-    bgGrad.addColorStop(1, '#DCFCE7');
-    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#16A34A', 2);
+    bgGrad.addColorStop(0, '#ECFDF5');
+    bgGrad.addColorStop(0.7, '#D1FAE5');
+    bgGrad.addColorStop(1, '#A7F3D0');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#10B981', 2);
 
-    // Chậu cây đất nung cắt dọc một phần để thấy lớp giá thể và lỗ thoát nước
-    ctx.beginPath();
-    ctx.moveTo(295, 210);
-    ctx.lineTo(465, 210);
-    ctx.lineTo(440, 360);
-    ctx.lineTo(320, 360);
-    ctx.closePath();
-    ctx.fillStyle = '#D97706';
-    ctx.fill();
-    ctx.strokeStyle = '#92400E';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+    // Mặt bàn gỗ tự nhiên
+    const tableGrad = ctx.createLinearGradient(0, 300, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(0.4, '#B45309');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 305, 736, 100, 8, tableGrad, '#78350F', 1.5);
 
-    // Viền miệng chậu
-    drawRoundedRect(ctx, 284, 194, 192, 22, 6, '#B45309', '#78350F', 2);
+    const isSubstrateTopic =
+        subjectLower.includes('giá thể') ||
+        subjectLower.includes('xơ dừa') ||
+        subjectLower.includes('trấu hun') ||
+        subjectLower.includes('mùn cưa') ||
+        subjectLower.includes('đất trồng');
 
-    // Mặt cắt bên trong chậu: Giá thể trồng cây + Sỏi thoát nước
-    drawRoundedRect(ctx, 322, 222, 116, 96, 6, '#573B26', '#3E2723', 1.5);
-    drawRoundedRect(ctx, 326, 322, 108, 28, 6, '#94A3B8', '#475569', 1.5);
+    const isPotTypesTopic =
+        !isSubstrateTopic &&
+        (subjectLower.includes('loại chậu') ||
+            subjectLower.includes('chậu nhựa') ||
+            subjectLower.includes('chậu sứ') ||
+            subjectLower.includes('chậu đất nung') ||
+            (subjectLower.includes('chậu') && !subjectLower.includes('gieo hạt')));
 
-    // Thân cây, lá và hoa
-    ctx.strokeStyle = '#15803D';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(380, 222);
-    ctx.lineTo(380, 95);
-    ctx.stroke();
+    if (isSubstrateTopic) {
+        // Vẽ 3 khay/túi đựng giá thể thực tế trên mặt bàn gỗ: Xơ dừa, Trấu hun, Mùn cưa / Đất trồng
+        const substrates = [
+            { x: 75, name: 'Xơ dừa', topColor: '#9A3412', bodyColor: '#7C2D12', grainColor: '#B45309' },
+            { x: 295, name: 'Trấu hun', topColor: '#1E293B', bodyColor: '#0F172A', grainColor: '#334155' },
+            { x: 515, name: 'Mùn cưa / Đất mùn', topColor: '#CA8A04', bodyColor: '#854D0E', grainColor: '#EAB308' }
+        ];
 
-    // Rễ cây trong giá thể
-    ctx.strokeStyle = '#FDE68A';
-    ctx.lineWidth = 2.2;
-    [-22, 0, 22].forEach(rx => {
+        substrates.forEach(sub => {
+            // Bóng đổ trên mặt bàn
+            ctx.beginPath();
+            ctx.ellipse(sub.x + 85, 336, 78, 16, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fill();
+
+            // Khay gỗ / Túi trong suốt chứa giá thể
+            drawRoundedRect(ctx, sub.x, 155, 170, 175, 14, 'rgba(255,255,255,0.88)', '#CBD5E1', 2.5);
+
+            // Khối giá thể bên trong
+            drawRoundedRect(ctx, sub.x + 10, 195, 150, 125, 10, sub.bodyColor);
+            ctx.beginPath();
+            ctx.ellipse(sub.x + 85, 195, 75, 22, 0, 0, Math.PI * 2);
+            ctx.fillStyle = sub.topColor;
+            ctx.fill();
+
+            // Hạt kết cấu tự nhiên của giá thể
+            ctx.fillStyle = sub.grainColor;
+            for (let i = 0; i < 28; i++) {
+                const gx = sub.x + 22 + ((i * 37) % 126);
+                const gy = 185 + ((i * 29) % 120);
+                ctx.beginPath();
+                ctx.arc(gx, gy, (i % 3) + 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            drawBadgeLabel(ctx, sub.name, sub.x + 85, 360, '#FFFFFF', '#78350F', '#451A03');
+        });
+    } else if (isPotTypesTopic) {
+        // Vẽ 4 loại chậu trồng hoa, cây cảnh đặt cạnh nhau trên bàn gỗ (Chậu đất nung, Chậu gốm sứ, Chậu nhựa trắng, Chậu nhựa mềm)
+        const pots = [
+            { cx: 120, rimW: 116, topW: 104, botW: 68, h: 128, rimCol: '#C2410C', bodyCol: '#EA580C', stroke: '#7C2D12', label: 'Chậu đất nung' },
+            { cx: 295, rimW: 118, topW: 108, botW: 72, h: 124, rimCol: '#0284C7', bodyCol: '#38BDF8', stroke: '#0369A1', label: 'Chậu gốm, sứ' },
+            { cx: 470, rimW: 114, topW: 104, botW: 68, h: 120, rimCol: '#E2E8F0', bodyCol: '#F8FAFC', stroke: '#64748B', label: 'Chậu nhựa cứng' },
+            { cx: 640, rimW: 106, topW: 98, botW: 64, h: 112, rimCol: '#334155', bodyCol: '#1E293B', stroke: '#0F172A', label: 'Chậu nhựa mềm' }
+        ];
+
+        pots.forEach(p => {
+            const baseY = 328;
+            const topY = baseY - p.h;
+
+            // Bóng đổ trên bàn
+            ctx.beginPath();
+            ctx.ellipse(p.cx, baseY + 6, p.botW / 2 + 12, 11, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.22)';
+            ctx.fill();
+
+            // Thân chậu hình thang cân 3D
+            ctx.beginPath();
+            ctx.moveTo(p.cx - p.topW / 2, topY);
+            ctx.lineTo(p.cx + p.topW / 2, topY);
+            ctx.lineTo(p.cx + p.botW / 2, baseY);
+            ctx.lineTo(p.cx - p.botW / 2, baseY);
+            ctx.closePath();
+            ctx.fillStyle = p.bodyCol;
+            ctx.fill();
+            ctx.strokeStyle = p.stroke;
+            ctx.lineWidth = 2.2;
+            ctx.stroke();
+
+            // Vành miệng chậu
+            drawRoundedRect(ctx, p.cx - p.rimW / 2, topY - 14, p.rimW, 18, 5, p.rimCol, p.stroke, 2);
+            // Lòng chậu phía trên
+            ctx.beginPath();
+            ctx.ellipse(p.cx, topY - 5, p.topW / 2 - 4, 6, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#451A03';
+            ctx.fill();
+
+            drawBadgeLabel(ctx, p.label, p.cx, 362, '#FFFFFF', p.stroke, '#0F172A');
+        });
+    } else {
+        // Vẽ chậu hoa, cây cảnh kèm bộ dụng cụ làm vườn cầm tay (xẻng nhỏ, bình tưới) trên mặt bàn gỗ
+        // 1. Chậu cây cảnh ở giữa
         ctx.beginPath();
-        ctx.moveTo(380, 225);
-        ctx.lineTo(380 + rx, 275);
-        ctx.lineTo(380 + rx * 1.4, 305);
-        ctx.stroke();
-    });
-
-    // Lá cây xanh
-    [
-        { x: 350, y: 155, ang: -0.5 },
-        { x: 410, y: 145, ang: 0.5 },
-        { x: 348, y: 120, ang: -0.4 },
-        { x: 412, y: 112, ang: 0.4 }
-    ].forEach(leaf => {
-        ctx.save();
-        ctx.translate(leaf.x, leaf.y);
-        ctx.rotate(leaf.ang);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 26, 12, 0, 0, Math.PI * 2);
-        ctx.fillStyle = '#22C55E';
+        ctx.ellipse(380, 332, 74, 14, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
         ctx.fill();
-        ctx.strokeStyle = '#14532D';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.restore();
-    });
 
-    // Bông hoa nở trên đỉnh
-    for (let a = 0; a < 6; a++) {
-        const ang = (a * Math.PI) / 3;
         ctx.beginPath();
-        ctx.arc(380 + Math.cos(ang) * 18, 76 + Math.sin(ang) * 18, 12, 0, Math.PI * 2);
-        ctx.fillStyle = '#F43F5E';
+        ctx.moveTo(310, 200);
+        ctx.lineTo(450, 200);
+        ctx.lineTo(426, 330);
+        ctx.lineTo(334, 330);
+        ctx.closePath();
+        ctx.fillStyle = '#EA580C';
         ctx.fill();
+        ctx.strokeStyle = '#9A3412';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        drawRoundedRect(ctx, 298, 184, 164, 20, 6, '#C2410C', '#7C2D12', 2);
+        ctx.beginPath();
+        ctx.ellipse(380, 194, 72, 8, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#451A03';
+        ctx.fill();
+
+        // Thân cây, lá và hoa
+        ctx.strokeStyle = '#15803D';
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(380, 194);
+        ctx.lineTo(380, 88);
+        ctx.stroke();
+
+        [
+            { x: 348, y: 150, ang: -0.5 },
+            { x: 412, y: 142, ang: 0.5 },
+            { x: 346, y: 116, ang: -0.4 },
+            { x: 414, y: 108, ang: 0.4 }
+        ].forEach(leaf => {
+            ctx.save();
+            ctx.translate(leaf.x, leaf.y);
+            ctx.rotate(leaf.ang);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 26, 12, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#22C55E';
+            ctx.fill();
+            ctx.strokeStyle = '#14532D';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        for (let a = 0; a < 6; a++) {
+            const ang = (a * Math.PI) / 3;
+            ctx.beginPath();
+            ctx.arc(380 + Math.cos(ang) * 18, 72 + Math.sin(ang) * 18, 12, 0, Math.PI * 2);
+            ctx.fillStyle = '#F43F5E';
+            ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(380, 72, 11, 0, Math.PI * 2);
+        ctx.fillStyle = '#FACC15';
+        ctx.fill();
+
+        // 2. Xẻng nhỏ làm vườn bên trái
+        drawRoundedRect(ctx, 140, 286, 62, 18, 8, '#EF4444', '#991B1B', 1.8);
+        drawRoundedRect(ctx, 200, 291, 24, 8, 3, '#64748B');
+        ctx.beginPath();
+        ctx.moveTo(222, 280);
+        ctx.lineTo(275, 295);
+        ctx.lineTo(222, 310);
+        ctx.closePath();
+        ctx.fillStyle = '#94A3B8';
+        ctx.fill();
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        // 3. Bình tưới cây bên phải
+        drawRoundedRect(ctx, 520, 225, 92, 102, 12, '#0EA5E9', '#0369A1', 2);
+        ctx.strokeStyle = '#0369A1';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(612, 274, 24, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(520, 255);
+        ctx.lineTo(476, 215);
+        ctx.stroke();
     }
-    ctx.beginPath();
-    ctx.arc(380, 76, 11, 0, Math.PI * 2);
-    ctx.fillStyle = '#FACC15';
-    ctx.fill();
-
-    drawTechnicalCallout(ctx, 392, 76, 515, 72, '1. Hoa, Lá & Thân cây', 'Bộ phận phát triển phía trên mặt chậu', 'left', '#16A34A');
-    drawTechnicalCallout(ctx, 300, 205, 240, 155, '2. Chậu trồng hoa, cây cảnh', 'Có kích thước phù hợp và lỗ thoát nước', 'right', '#D97706');
-    drawTechnicalCallout(ctx, 365, 265, 240, 255, '3. Giá thể & Rễ cây', 'Giữ cây đứng vững, cung cấp chất dinh dưỡng', 'right', '#78350F');
-    drawTechnicalCallout(ctx, 415, 336, 515, 315, '4. Lớp sỏi & Lỗ thoát nước', 'Giúp chậu cây không bị ngập úng', 'left', '#475569');
 };
 
 /**
@@ -2042,112 +2159,240 @@ const drawOfficeOrPaintScene = (ctx: CanvasRenderingContext2D, subjectLower: str
     });
 };
 
-/**
- * 17. SƠ ĐỒ BÓC TÁCH CẤU TẠO / MÔ HÌNH ĐỐI TƯỢNG TRỰC QUAN TỔNG QUÁT
- * (Tuyệt đối KHÔNG dùng khung phiếu học tập "Thành phần quan sát 1/2", mà vẽ trực tiếp mô hình đối tượng ở trung tâm kèm các nhãn chỉ dẫn kỹ thuật)
- */
-const drawVisualObjectDiagramFallback = (
-    ctx: CanvasRenderingContext2D,
-    cleanDesc: string,
-    coreObjectText: string
-) => {
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
-    bgGrad.addColorStop(0, '#F8FAFC');
-    bgGrad.addColorStop(1, '#E2E8F0');
-    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
-
-    // Tách các bộ phận / thành phần của đối tượng từ câu mô tả
-    const rawParts = cleanDesc
-        .replace(/^(hình ảnh|minh họa|sơ đồ|mô hình|cấu tạo|bộ phận)\s*/i, '')
-        .split(/(?:,|;|\bvà\b|\bgồm\b|\bnhư\b)/i)
-        .map(s => s.trim())
-        .filter(s => s.length >= 3);
-
-    const mainObjectTitle = wrapCanvasText(
-        ctx,
-        (coreObjectText || cleanDesc).replace(/^[-–\*\s]+/, ''),
-        220,
-        2
-    );
-
-    // Vẽ mô hình đối tượng 3D ở trung tâm
-    const cx = 380;
-    const cy = 205;
-
-    // Bệ đỡ đối tượng
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 105, 110, 20, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#CBD5E1';
-    ctx.fill();
-    ctx.strokeStyle = '#64748B';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Khối mô hình chính ở trung tâm
-    drawRoundedRect(ctx, cx - 95, cy - 82, 190, 168, 18, '#FFFFFF', '#0284C7', 3);
-    drawRoundedRect(ctx, cx - 83, cy - 70, 166, 46, 10, '#0284C7');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 12.5px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    mainObjectTitle.forEach((line, idx) => {
-        ctx.fillText(line.toUpperCase(), cx, (mainObjectTitle.length === 1 ? cy - 47 : cy - 55) + idx * 16);
-    });
-
-    // Minh họa cấu trúc kỹ thuật bên trong mô hình trung tâm
-    drawRoundedRect(ctx, cx - 72, cy - 12, 64, 42, 6, '#DBEAFE', '#2563EB', 1.5);
-    drawRoundedRect(ctx, cx + 8, cy - 12, 64, 42, 6, '#DCFCE7', '#16A34A', 1.5);
-    drawRoundedRect(ctx, cx - 72, cy + 38, 144, 34, 6, '#FEF3C7', '#D97706', 1.5);
-
-    ctx.fillStyle = '#1E3A8A';
-    ctx.font = 'bold 11px Arial';
-    ctx.fillText('Cấu trúc A', cx - 40, cy + 9);
-    ctx.fillStyle = '#14532D';
-    ctx.fillText('Cấu trúc B', cx + 40, cy + 9);
-    ctx.fillStyle = '#92400E';
-    ctx.fillText('Hệ thống liên kết & Hoạt động', cx, cy + 55);
-
-    const calloutParts = rawParts.length >= 2
-        ? rawParts.slice(0, 4)
-        : [
-            'Bộ phận cấu tạo chính của đối tượng',
-            'Chi tiết liên kết và điều khiển',
-            'Đặc điểm nhận biết trực quan',
-            'Ứng dụng thực hành trong bài học'
-        ];
-
-    const calloutCoords = [
-        { ox: cx - 72, oy: cy - 35, lx: 245, ly: 92, align: 'right' as const, col: '#0284C7' },
-        { ox: cx - 72, oy: cy + 35, lx: 245, ly: 255, align: 'right' as const, col: '#16A34A' },
-        { ox: cx + 72, oy: cy - 35, lx: 515, ly: 92, align: 'left' as const, col: '#D97706' },
-        { ox: cx + 72, oy: cy + 35, lx: 515, ly: 255, align: 'left' as const, col: '#7C3AED' }
-    ];
-
-    calloutParts.forEach((part, idx) => {
-        const pos = calloutCoords[idx];
-        const shortPart = wrapCanvasText(ctx, part.charAt(0).toUpperCase() + part.slice(1), 175, 1)[0];
-        drawTechnicalCallout(
-            ctx,
-            pos.ox,
-            pos.oy,
-            pos.lx,
-            pos.ly,
-            `${idx + 1}. ${shortPart}`,
-            'Chi tiết trực quan của đối tượng',
-            pos.align,
-            pos.col
-        );
-    });
-
-    drawRoundedRect(ctx, 36, 352, 688, 42, 8, '#FFFFFF', '#0284C7', 1.5);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 12.5px "Times New Roman", Arial';
-    ctx.textAlign = 'center';
-    const bottomCaption = wrapCanvasText(ctx, cleanDesc, 660, 1)[0];
-    ctx.fillText(bottomCaption, 380, 373);
+const normalizeImageDescKey = (rawDesc: string): string => {
+    return (rawDesc || '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim();
 };
 
 /**
- * Tạo hình ảnh trực quan (PNG Data URL) mô tả ĐÚNG ĐỐI TƯỢNG, HỌC CỤ HOẶC MÔ HÌNH KỸ THUẬT
+ * 17. HÌNH ẢNH TRỰC QUAN MÀN HÌNH MÁY TÍNH ĐỐI CHIẾU & KIỂM TRA THÔNG TIN TƯ VẤN TỪ AI / CHATGPT
+ * (Vẽ trực quan màn hình máy tính đặt trên bàn gỗ với cửa sổ hội thoại AI bên trái và cửa sổ tìm kiếm kiểm chứng bên phải, kèm kính lúp xác thực - tuyệt đối không vẽ mindmap hay infographic)
+ */
+const drawAiVerificationAndDigitalScreenScene = (
+    ctx: CanvasRenderingContext2D,
+    subjectLower: string
+) => {
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#EFF6FF');
+    bgGrad.addColorStop(0.75, '#DBEAFE');
+    bgGrad.addColorStop(1, '#BFDBFE');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#3B82F6', 2);
+
+    // Mặt bàn gỗ phía dưới
+    const tableGrad = ctx.createLinearGradient(0, 336, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(1, '#92400E');
+    drawRoundedRect(ctx, 12, 338, 736, 68, 8, tableGrad, '#78350F', 1.5);
+
+    // Chân đế màn hình máy tính 3D
+    ctx.beginPath();
+    ctx.ellipse(380, 366, 96, 15, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.25)';
+    ctx.fill();
+    drawRoundedRect(ctx, 352, 306, 56, 48, 4, '#475569', '#1E293B', 2);
+    drawRoundedRect(ctx, 296, 348, 168, 16, 8, '#64748B', '#1E293B', 2);
+
+    // Khung màn hình máy tính hiện đại
+    drawRoundedRect(ctx, 74, 24, 612, 288, 14, '#0F172A', '#334155', 3);
+    drawRoundedRect(ctx, 88, 38, 584, 256, 8, '#F8FAFC', '#CBD5E1', 1.5);
+
+    // Thanh tiêu đề cửa sổ trình duyệt
+    drawRoundedRect(ctx, 88, 38, 584, 28, 6, '#E2E8F0');
+    ['#EF4444', '#F59E0B', '#22C55E'].forEach((col, i) => {
+        ctx.beginPath();
+        ctx.arc(106 + i * 15, 52, 5, 0, Math.PI * 2);
+        ctx.fillStyle = col;
+        ctx.fill();
+    });
+    drawRoundedRect(ctx, 162, 44, 492, 16, 8, '#FFFFFF', '#CBD5E1', 1);
+
+    const isSearchFocus =
+        subjectLower.includes('google') ||
+        subjectLower.includes('tìm kiếm') ||
+        subjectLower.includes('đối chiếu') ||
+        subjectLower.includes('kiểm chứng') ||
+        subjectLower.includes('trang web chính thống');
+
+    // Cửa sổ bên trái: Giao diện Trợ lý AI / ChatGPT
+    const leftW = isSearchFocus ? 256 : 284;
+    drawRoundedRect(ctx, 102, 76, leftW, 204, 10, '#FFFFFF', '#10B981', 2);
+    drawRoundedRect(ctx, 102, 76, leftW, 32, 8, '#10B981');
+
+    // Icon Robot AI nhỏ trên thanh header
+    ctx.beginPath();
+    ctx.arc(124, 92, 9, 0, Math.PI * 2);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fill();
+    ctx.fillStyle = '#047857';
+    ctx.font = 'bold 10px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('AI', 124, 95);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 12px "Times New Roman", Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('ChatGPT / Trợ lý AI', 140, 96);
+
+    // Bong bóng câu hỏi của người dùng
+    drawRoundedRect(ctx, 146, 118, leftW - 56, 36, 8, '#DBEAFE', '#60A5FA', 1.2);
+    drawRoundedRect(ctx, 158, 128, leftW - 84, 7, 3, '#2563EB');
+    drawRoundedRect(ctx, 158, 140, leftW - 116, 7, 3, '#60A5FA');
+
+    // Bong bóng câu trả lời tư vấn từ ChatGPT
+    drawRoundedRect(ctx, 114, 164, leftW - 28, 72, 8, '#ECFDF5', '#34D399', 1.5);
+    drawRoundedRect(ctx, 126, 176, leftW - 54, 7, 3, '#059669');
+    drawRoundedRect(ctx, 126, 190, leftW - 64, 7, 3, '#10B981');
+    drawRoundedRect(ctx, 126, 204, leftW - 88, 7, 3, '#10B981');
+    // Dấu chấm hỏi cần kiểm chứng trên thông tin AI
+    drawNumberedCalloutCircle(ctx, '?', 114 + leftW - 44, 214, 13);
+
+    // Thanh nhập câu hỏi dưới đáy khung chat
+    drawRoundedRect(ctx, 114, 246, leftW - 24, 22, 11, '#F1F5F9', '#CBD5E1', 1);
+
+    // Cửa sổ bên phải: Công cụ Tìm kiếm & Nguồn thông tin chính thống để kiểm tra, đối chiếu
+    const rightX = 102 + leftW + 16;
+    const rightW = 556 - leftW;
+    drawRoundedRect(ctx, rightX, 76, rightW, 204, 10, '#FFFFFF', '#2563EB', 2);
+    drawRoundedRect(ctx, rightX, 76, rightW, 32, 8, '#2563EB');
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 12px "Times New Roman", Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('🔍 Tra cứu & Kiểm chứng thông tin', rightX + 14, 96);
+
+    // Ô tìm kiếm Google
+    drawRoundedRect(ctx, rightX + 14, 118, rightW - 28, 28, 14, '#F8FAFC', '#3B82F6', 1.5);
+    ctx.beginPath();
+    ctx.arc(rightX + 30, 132, 6, 0, Math.PI * 2);
+    ctx.strokeStyle = '#2563EB';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    drawRoundedRect(ctx, rightX + 44, 128, rightW - 86, 8, 4, '#93C5FD');
+
+    // Kết quả đối chiếu 1 (Có tích xanh xác thực)
+    drawRoundedRect(ctx, rightX + 14, 156, rightW - 28, 50, 8, '#F0FDF4', '#22C55E', 1.5);
+    drawRoundedRect(ctx, rightX + 26, 168, rightW - 90, 8, 4, '#15803D');
+    drawRoundedRect(ctx, rightX + 26, 182, rightW - 110, 7, 3, '#86EFAC');
+    ctx.beginPath();
+    ctx.arc(rightX + rightW - 36, 181, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#16A34A';
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 13px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('✓', rightX + rightW - 36, 182);
+
+    // Kết quả đối chiếu 2 (Sách báo / Trang chính thống)
+    drawRoundedRect(ctx, rightX + 14, 216, rightW - 28, 50, 8, '#EFF6FF', '#60A5FA', 1.5);
+    drawRoundedRect(ctx, rightX + 26, 228, rightW - 90, 8, 4, '#1D4ED8');
+    drawRoundedRect(ctx, rightX + 26, 242, rightW - 115, 7, 3, '#93C5FD');
+    ctx.beginPath();
+    ctx.arc(rightX + rightW - 36, 241, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#2563EB';
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText('✓', rightX + rightW - 36, 242);
+
+    // Kính lúp trực quan soi chiếu giữa 2 cửa sổ
+    const magX = 102 + leftW + 8;
+    const magY = 178;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(magX + 16, magY + 16);
+    ctx.lineTo(magX + 38, magY + 38);
+    ctx.strokeStyle = '#B45309';
+    ctx.lineWidth = 7;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(magX, magY, 24, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(254, 249, 195, 0.88)';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#F59E0B';
+    ctx.stroke();
+    ctx.restore();
+};
+
+/**
+ * 18. HÌNH ẢNH TRỰC QUAN VẬT THỂ / HỌC CỤ / MÀN HÌNH ĐỐI TƯỢNG TRÊN BÀN GỖ
+ * (Tuyệt đối KHÔNG vẽ sơ đồ tư duy mindmap, KHÔNG vẽ "Cấu trúc A / Cấu trúc B", KHÔNG vẽ hộp chữ "1. Bộ phận cấu tạo chính...")
+ */
+const drawDirectVisualObjectFallback = (
+    ctx: CanvasRenderingContext2D,
+    subjectLower: string,
+    cleanDesc: string
+) => {
+    const isDigitalOrComputerTopic =
+        subjectLower.includes('máy tính') ||
+        subjectLower.includes('màn hình') ||
+        subjectLower.includes('phần mềm') ||
+        subjectLower.includes('ứng dụng') ||
+        subjectLower.includes('trình duyệt') ||
+        subjectLower.includes('internet') ||
+        subjectLower.includes('mạng') ||
+        subjectLower.includes('kĩ năng số') ||
+        subjectLower.includes('kỹ năng số') ||
+        subjectLower.includes('chatgpt') ||
+        subjectLower.includes('trí tuệ nhân tạo') ||
+        subjectLower.includes('thông tin');
+
+    if (isDigitalOrComputerTopic) {
+        drawAiVerificationAndDigitalScreenScene(ctx, subjectLower);
+        return;
+    }
+
+    // Vẽ bối cảnh bàn gỗ thực hành trực quan với các vật mẫu / học cụ 3D đặt trên bàn
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
+    bgGrad.addColorStop(0, '#F0F9FF');
+    bgGrad.addColorStop(0.7, '#E0F2FE');
+    bgGrad.addColorStop(1, '#BAE6FD');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
+
+    // Mặt bàn gỗ thực hành
+    const tableGrad = ctx.createLinearGradient(0, 295, 0, 412);
+    tableGrad.addColorStop(0, '#D97706');
+    tableGrad.addColorStop(0.5, '#B45309');
+    tableGrad.addColorStop(1, '#78350F');
+    drawRoundedRect(ctx, 12, 298, 736, 108, 8, tableGrad, '#78350F', 1.5);
+
+    // Khay học cụ / vật mẫu thứ nhất (Bên trái)
+    ctx.beginPath();
+    ctx.ellipse(210, 336, 95, 16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fill();
+    drawRoundedRect(ctx, 115, 145, 190, 185, 16, '#FFFFFF', '#0284C7', 2.5);
+    drawRoundedRect(ctx, 133, 165, 154, 115, 12, '#E0F2FE', '#38BDF8', 1.8);
+
+    // Vật thể 3D trực quan trong khay 1
+    ctx.beginPath();
+    ctx.arc(210, 222, 38, 0, Math.PI * 2);
+    ctx.fillStyle = '#0284C7';
+    ctx.fill();
+    drawRoundedRect(ctx, 182, 194, 56, 56, 10, '#38BDF8', '#0369A1', 2);
+
+    // Mô hình / Học cụ chính ở trung tâm - bên phải
+    ctx.beginPath();
+    ctx.ellipse(515, 336, 125, 18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fill();
+    drawRoundedRect(ctx, 380, 120, 270, 210, 18, '#FFFFFF', '#16A34A', 2.5);
+    drawRoundedRect(ctx, 402, 142, 226, 138, 12, '#F0FDF4', '#4ADE80', 1.8);
+
+    // Các khối chi tiết vật lý trực quan bên trong
+    drawRoundedRect(ctx, 424, 166, 82, 92, 10, '#22C55E', '#15803D', 2);
+    drawRoundedRect(ctx, 524, 166, 82, 42, 8, '#F59E0B', '#B45309', 2);
+    drawRoundedRect(ctx, 524, 216, 82, 42, 8, '#3B82F6', '#1D4ED8', 2);
+
+    const shortLabel = wrapCanvasText(ctx, cleanDesc.replace(/^[-–\*\s]+/, ''), 230, 1)[0];
+    drawBadgeLabel(ctx, shortLabel || 'Học cụ & Vật mẫu trực quan', 515, 304, '#ECFDF5', '#16A34A', '#065F46');
+};
+
+/**
+ * Tạo hình ảnh trực quan (PNG Data URL) mô tả ĐÚNG ĐỐI TƯỢNG, HỌC CỤ, VẬT THẬT HOẶC MÀN HÌNH GIAO DIỆN
  * được nhắc đến ở câu văn ngay phía trên (`precedingContext`) và mô tả hình ảnh (`rawLine`).
  */
 export const renderPedagogicalIllustrationDataUrl = (
@@ -2157,7 +2402,13 @@ export const renderPedagogicalIllustrationDataUrl = (
 ): string => {
     const cleanDesc = extractCleanImageDescription(rawLine);
     const cleanContext = (precedingContext || '').trim();
+    const descKey = `desc__${normalizeImageDescKey(cleanDesc)}`;
     const cacheKey = `${lessonTitle}__${cleanContext}__${cleanDesc}`;
+
+    // Ưu tiên 1: Lấy hình ảnh AI thực tế đã được tạo trong `pregenerateLessonImagesWithAI`
+    if (imageDataUrlCache.has(descKey)) {
+        return imageDataUrlCache.get(descKey)!;
+    }
     if (imageDataUrlCache.has(cacheKey)) {
         return imageDataUrlCache.get(cacheKey)!;
     }
@@ -2172,21 +2423,34 @@ export const renderPedagogicalIllustrationDataUrl = (
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
 
-    // Tách bỏ các động từ sư phạm ("Giáo viên trình chiếu hình ảnh...", "GV yêu cầu mở...") để lấy đúng TÊN ĐỐI TƯỢNG / HỌC CỤ
+    // Chỉ lấy câu văn ngay phía trên (không lấy toàn bộ lịch sử dài) để tránh bị nhiễu từ khóa của câu khác
+    const contextLines = cleanContext.split('\n').map(l => l.trim()).filter(Boolean);
+    const immediateContextLine = contextLines.length > 0 ? contextLines[contextLines.length - 1] : cleanContext;
+
     const coreDescObject = extractCoreVisualObjectText(cleanDesc);
-    const coreContextObject = extractCoreVisualObjectText(cleanContext);
+    const coreContextObject = extractCoreVisualObjectText(immediateContextLine);
     const subjectText = `${coreDescObject} ${coreContextObject}`.trim();
     const subjectLower = subjectText.toLowerCase();
 
-    // 1. NHẬN DIỆN RÔ-BỐT & CÁC BỘ PHẬN CỦA RÔ-BỐT (Ưu tiên số 1 khi câu văn nhắc tới robot/rô-bốt)
-    const isRobotTopic =
-        subjectLower.includes('rô-bốt') ||
-        subjectLower.includes('rô bốt') ||
-        subjectLower.includes('robot') ||
-        subjectLower.includes('cảm biến') ||
-        (subjectLower.includes('bộ điều khiển') && subjectLower.includes('bộ phận'));
+    // 0. NHẬN DIỆN CHỦ ĐỀ CHATGPT / TRÍ TUỆ NHÂN TẠO / KIỂM TRA & ĐỐI CHIẾU THÔNG TIN SỐ
+    const isAiOrFactCheckTopic =
+        subjectLower.includes('chatgpt') ||
+        subjectLower.includes('chat gpt') ||
+        subjectLower.includes('trí tuệ nhân tạo') ||
+        subjectLower.includes('kiểm tra thông tin') ||
+        subjectLower.includes('thông tin tư vấn') ||
+        subjectLower.includes('đối chiếu thông tin') ||
+        subjectLower.includes('kiểm chứng');
 
-    // 2. NHẬN DIỆN BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT (Hộp dụng cụ, chi tiết thanh thẳng, tua-vít, cờ-lê, ốc vít)
+    // 1. NHẬN DIỆN RÔ-BỐT & CÁC BỘ PHẬN CỦA RÔ-BỐT
+    const isRobotTopic =
+        !isAiOrFactCheckTopic &&
+        (subjectLower.includes('rô-bốt') ||
+            subjectLower.includes('rô bốt') ||
+            subjectLower.includes('robot') ||
+            (subjectLower.includes('cảm biến') && subjectLower.includes('bộ phận')));
+
+    // 2. NHẬN DIỆN BỘ LẮP GHÉP MÔ HÌNH KỸ THUẬT
     const isAssemblyKitBox =
         subjectLower.includes('bộ lắp ghép') ||
         subjectLower.includes('hộp lắp ghép') ||
@@ -2197,7 +2461,7 @@ export const renderPedagogicalIllustrationDataUrl = (
         (subjectLower.includes('chi tiết') && subjectLower.includes('dụng cụ')) ||
         (subjectLower.includes('thanh thẳng') && (subjectLower.includes('ốc vít') || subjectLower.includes('đai ốc') || subjectLower.includes('bánh răng')));
 
-    // 3. NHẬN DIỆN MÔ HÌNH KỸ THUẬT ĐÃ LẮP GHÉP (Xe cần cẩu, xe tải, cối xay gió, máy phát điện gió, mặt trời, cầu vượt, xích đu...)
+    // 3. NHẬN DIỆN MÔ HÌNH KỸ THUẬT ĐÃ LẮP GHÉP
     const isAssembledTechnicalModel =
         !isAssemblyKitBox &&
         (subjectLower.includes('mô hình xe') ||
@@ -2224,25 +2488,24 @@ export const renderPedagogicalIllustrationDataUrl = (
         subjectLower.includes('máy thu thanh') ||
         subjectLower.includes('máy thu hình');
 
-    // 5. NHẬN DIỆN CHẬU HOA / CÂY CẢNH / GIEO HẠT / THỰC VẬT
+    // 5. NHẬN DIỆN CHẬU HOA / CÂY CẢNH / GIÁ THỂ / GIEO HẠT
     const isPlantOrGardening =
         subjectLower.includes('chậu hoa') ||
+        subjectLower.includes('chậu trồng') ||
+        subjectLower.includes('loại chậu') ||
+        subjectLower.includes('chậu đất nung') ||
+        subjectLower.includes('chậu nhựa') ||
+        subjectLower.includes('chậu sứ') ||
         subjectLower.includes('cây cảnh') ||
         subjectLower.includes('giá thể') ||
+        subjectLower.includes('xơ dừa') ||
+        subjectLower.includes('trấu hun') ||
+        subjectLower.includes('mùn cưa') ||
         subjectLower.includes('gieo hạt') ||
         subjectLower.includes('trồng cây') ||
         subjectLower.includes('trồng hoa');
 
-    // 6. NHẬN DIỆN TRANG WEB / HÌNH 7
-    const isWebpageTopic =
-        subjectLower.includes('trang web') ||
-        subjectLower.includes('website') ||
-        subjectLower.includes('siêu văn bản') ||
-        subjectLower.includes('siêu liên kết') ||
-        /hình\s*7\b/i.test(subjectLower) ||
-        (subjectLower.includes('đánh số') && (subjectLower.includes('văn bản') || subjectLower.includes('hình ảnh') || subjectLower.includes('video')));
-
-    // 7. NHẬN DIỆN 4 DẠNG THÔNG TIN ĐA PHƯƠNG TIỆN
+    // 6. NHẬN DIỆN CÁC DẠNG THÔNG TIN TRÊN TRANG WEB (CHỈ KHI CÂU VĂN NÓI RÕ VỀ VĂN BẢN, HÌNH ẢNH, ÂM THANH, VIDEO TRÊN TRANG WEB)
     const infoTypeCount = [
         subjectLower.includes('chữ viết') || subjectLower.includes('văn bản'),
         subjectLower.includes('hình ảnh'),
@@ -2250,20 +2513,24 @@ export const renderPedagogicalIllustrationDataUrl = (
         subjectLower.includes('video')
     ].filter(Boolean).length;
 
+    const isWebpageMultimediaTopic =
+        !isAiOrFactCheckTopic &&
+        ((subjectLower.includes('trang web') && infoTypeCount >= 2) ||
+            subjectLower.includes('siêu văn bản') ||
+            subjectLower.includes('siêu liên kết') ||
+            /hình\s*7\b/i.test(subjectLower));
+
+    // 7. NHẬN DIỆN 4 DẠNG THÔNG TIN ĐA PHƯƠNG TIỆN
     const isMultimediaInformationTypes =
-        subjectLower.includes('các loại thông tin') ||
-        subjectLower.includes('các dạng thông tin') ||
-        subjectLower.includes('dạng thông tin') ||
-        subjectLower.includes('loại thông tin') ||
-        infoTypeCount >= 3 ||
-        (infoTypeCount >= 2 && (subjectLower.includes('biểu tượng đại diện') || subjectLower.includes('thông tin')));
+        !isAiOrFactCheckTopic &&
+        (subjectLower.includes('các loại thông tin') ||
+            subjectLower.includes('các dạng thông tin') ||
+            infoTypeCount >= 3);
 
     // 8. NHẬN DIỆN CỔNG KẾT NỐI & KHẮC PHỤC SỰ CỐ MÁY TÍNH
     const isPortsOrTroubleshooting =
         subjectLower.includes('cổng kết nối') ||
         subjectLower.includes('khắc phục sự cố') ||
-        subjectLower.includes('vấn đề kĩ thuật') ||
-        subjectLower.includes('vấn đề kỹ thuật') ||
         subjectLower.includes('lỗi không nhận');
 
     // 9. NHẬN DIỆN THIẾT BỊ PHẦN CỨNG / PHẦN MỀM CỤ THỂ
@@ -2283,10 +2550,15 @@ export const renderPedagogicalIllustrationDataUrl = (
         .map(entry => entry.item);
 
     const hasSpecificNamedItems =
-        matchedCatalogItems.length >= 2 ||
-        matchedCatalogItems.some(it => ['printer', 'hdd', 'typing_app', 'usb_drive', 'speaker'].includes(it.id));
+        !isAiOrFactCheckTopic &&
+        (matchedCatalogItems.length >= 2 ||
+            matchedCatalogItems.some(it => ['printer', 'hdd', 'typing_app', 'usb_drive', 'speaker'].includes(it.id)));
 
-    if (isRobotTopic) {
+    if (isPlantOrGardening) {
+        drawPlantAndGardeningScene(ctx, subjectLower);
+    } else if (isAiOrFactCheckTopic) {
+        drawAiVerificationAndDigitalScreenScene(ctx, subjectLower);
+    } else if (isRobotTopic) {
         drawRobotAnatomyScene(ctx);
     } else if (isAssemblyKitBox) {
         drawTechnicalAssemblyKitScene(ctx);
@@ -2294,9 +2566,16 @@ export const renderPedagogicalIllustrationDataUrl = (
         drawAssembledTechnicalModelScene(ctx, subjectLower, cleanDesc);
     } else if (isElectricalOrLamp) {
         drawElectricalApplianceOrLampScene(ctx);
-    } else if (isPlantOrGardening) {
-        drawPlantAndGardeningScene(ctx);
-    } else if (isWebpageTopic) {
+    } else if (
+        subjectLower.includes('máy tìm kiếm') ||
+        subjectLower.includes('từ khóa tìm kiếm') ||
+        subjectLower.includes('ô tìm kiếm') ||
+        subjectLower.includes('google tìm kiếm') ||
+        subjectLower.includes('google search') ||
+        (subjectLower.includes('tìm kiếm') && (subjectLower.includes('internet') || subjectLower.includes('trình duyệt')))
+    ) {
+        drawSearchEngineScene(ctx, subjectText);
+    } else if (isWebpageMultimediaTopic) {
         drawWebpageInformationScene(ctx, subjectText, subjectLower);
     } else if (isMultimediaInformationTypes) {
         drawMultimediaTypesOnScreenScene(ctx);
@@ -2313,13 +2592,6 @@ export const renderPedagogicalIllustrationDataUrl = (
         subjectLower.includes('tư thế ngồi')
     ) {
         drawKeyboardErgonomicsScene(ctx);
-    } else if (
-        subjectLower.includes('máy tìm kiếm') ||
-        subjectLower.includes('từ khóa tìm kiếm') ||
-        subjectLower.includes('ô tìm kiếm') ||
-        (subjectLower.includes('tìm kiếm') && subjectLower.includes('internet'))
-    ) {
-        drawSearchEngineScene(ctx, subjectText);
     } else if (
         subjectLower.includes('an toàn') ||
         subjectLower.includes('bảo mật') ||
@@ -2362,7 +2634,7 @@ export const renderPedagogicalIllustrationDataUrl = (
     ) {
         drawOfficeOrPaintScene(ctx, subjectLower, cleanDesc);
     } else {
-        drawVisualObjectDiagramFallback(ctx, cleanDesc, coreContextObject || coreDescObject);
+        drawDirectVisualObjectFallback(ctx, subjectLower, cleanDesc);
     }
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -2371,10 +2643,9 @@ export const renderPedagogicalIllustrationDataUrl = (
 };
 
 /**
- * Tự động gọi AI tạo hình ảnh trực quan thực tế (nếu API key hỗ trợ model tạo ảnh)
- * và lưu vào bộ nhớ đệm `imageDataUrlCache` trước khi hiển thị/xuất Word.
- * Nếu model tạo ảnh bị giới hạn quota trên key miễn phí, hệ thống tự động sử dụng
- * bộ vẽ kỹ thuật độ phân giải cao ở trên mà không làm gián đoạn quá trình tạo bài dạy.
+ * Tự động gọi AI tạo hình ảnh trực quan thực tế (giống hệt phong cách ảnh trực quan môn Công nghệ lớp 4)
+ * bám sát 100% câu văn ngay phía trên và lưu vào bộ nhớ đệm `imageDataUrlCache` (theo cả `descKey` và `cacheKey`)
+ * để hiển thị đồng nhất trên giao diện Xem trước và khi xuất file Word (.docx).
  */
 export const pregenerateLessonImagesWithAI = async (
     plan: LessonPlanResponse,
@@ -2383,7 +2654,8 @@ export const pregenerateLessonImagesWithAI = async (
 ): Promise<void> => {
     if (!plan || !Array.isArray(plan.periods) || !apiKey) return;
 
-    const tasks: Array<{ cacheKey: string; prompt: string }> = [];
+    const tasks: Array<{ descKey: string; cacheKey: string; prompt: string }> = [];
+    const seenDescKeys = new Set<string>();
 
     for (const period of plan.periods) {
         const lessonTitle = plan.lesson_full_title || lessonTitleFallback || '';
@@ -2394,19 +2666,25 @@ export const pregenerateLessonImagesWithAI = async (
                     .replace(/(\[Tích hợp[^\]]*\]:|-?\s*Tích hợp\s+[^:\n]+:)/gi, '\n$1');
 
                 const lines = rawTeacher.split('\n').map(l => l.trim()).filter(Boolean);
-                let runningContext = '';
+                let immediatePrecedingLine = '';
                 for (const line of lines) {
                     if (isImageHintLine(line)) {
                         const cleanDesc = extractCleanImageDescription(line);
-                        const cleanContext = runningContext.trim();
-                        const cacheKey = `${lessonTitle}__${cleanContext}__${cleanDesc}`;
-                        const coreObj = extractCoreVisualObjectText(`${cleanDesc}. ${cleanContext}`);
-                        tasks.push({
-                            cacheKey,
-                            prompt: `High-clarity educational textbook object illustration of: ${coreObj}. Show ONLY the exact physical object, technical model, or educational aid in close-up detail with clean studio lighting. NO classroom scene, NO teachers or students, NO worksheet borders.`
-                        });
+                        const descKey = `desc__${normalizeImageDescKey(cleanDesc)}`;
+                        const cacheKey = `${lessonTitle}__${immediatePrecedingLine}__${cleanDesc}`;
+
+                        if (!seenDescKeys.has(descKey) && !imageDataUrlCache.has(descKey)) {
+                            seenDescKeys.add(descKey);
+                            const coreDesc = extractCoreVisualObjectText(cleanDesc);
+                            const coreImmediate = extractCoreVisualObjectText(immediatePrecedingLine);
+                            tasks.push({
+                                descKey,
+                                cacheKey,
+                                prompt: `Create a clean, realistic, direct visual illustration for a primary school textbook showing: ${coreDesc}. Context from the sentence immediately above: ${coreImmediate}. Style: High-clarity realistic 3D/photographic visual depiction of the exact objects, tools, materials, devices, or computer screen interface mentioned, placed on a clean tabletop or screen with natural studio lighting (like primary school Technology and Digital Skills textbook illustrations). STRICTLY FORBIDDEN: DO NOT generate an infographic, DO NOT generate a mindmap, DO NOT generate a flowchart, DO NOT draw text boxes or callout arrows, DO NOT include text banners, DO NOT draw a classroom with teacher and students.`
+                            });
+                        }
                     } else if (!/^[-–\*\s]*(\[?\s*Tích\s*hợp\b)/i.test(line)) {
-                        runningContext = `${runningContext} ${line.replace(/\*\*/g, '')}`.trim();
+                        immediatePrecedingLine = line.replace(/\*\*/g, '').replace(/^[-–\*\s]+/, '').trim();
                     }
                 }
             }
@@ -2416,28 +2694,41 @@ export const pregenerateLessonImagesWithAI = async (
     if (tasks.length === 0) return;
 
     const ai = new GoogleGenAI({ apiKey });
+    const imageModels = [
+        'gemini-2.5-flash-image',
+        'gemini-3.1-flash-image-preview',
+        'gemini-3.1-flash-lite-image'
+    ];
+
     await Promise.all(
-        tasks.slice(0, 5).map(async task => {
-            try {
-                const res = await Promise.race([
-                    ai.models.generateContent({
-                        model: 'gemini-3.1-flash-lite-image',
-                        contents: task.prompt
-                    }),
-                    new Promise<null>(resolve => setTimeout(() => resolve(null), 6500))
-                ]);
-                if (!res) return;
-                const parts = (res as any)?.candidates?.[0]?.content?.parts || [];
-                for (const part of parts) {
-                    if (part?.inlineData?.data && part?.inlineData?.mimeType?.startsWith('image/')) {
-                        const dataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                        imageDataUrlCache.set(task.cacheKey, dataUrl);
-                        break;
+        tasks.slice(0, 8).map(async task => {
+            for (const modelName of imageModels) {
+                try {
+                    const res = await Promise.race([
+                        ai.models.generateContent({
+                            model: modelName,
+                            contents: task.prompt
+                        }),
+                        new Promise<null>(resolve => setTimeout(() => resolve(null), 18000))
+                    ]);
+                    if (!res) continue;
+                    const parts = (res as any)?.candidates?.[0]?.content?.parts || [];
+                    let foundImage = false;
+                    for (const part of parts) {
+                        if (part?.inlineData?.data && part?.inlineData?.mimeType?.startsWith('image/')) {
+                            const dataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                            imageDataUrlCache.set(task.descKey, dataUrl);
+                            imageDataUrlCache.set(task.cacheKey, dataUrl);
+                            foundImage = true;
+                            break;
+                        }
                     }
+                    if (foundImage) break;
+                } catch {
+                    // Thử tiếp model ảnh kế tiếp trong danh sách
                 }
-            } catch {
-                // Tự động sử dụng bản vẽ kỹ thuật chi tiết trong renderPedagogicalIllustrationDataUrl
             }
         })
     );
 };
+
