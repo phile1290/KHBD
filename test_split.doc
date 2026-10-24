@@ -1,0 +1,50 @@
+
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<style>
+@page Section1 {
+  size: 21.0cm 29.7cm;
+  margin: 2.0cm 2.0cm 2.0cm 2.5cm;
+  mso-header-margin: 36.0pt;
+  mso-footer-margin: 36.0pt;
+  mso-header: h1;
+  mso-footer: f1;
+}
+div.Section1 { page: Section1; }
+p.MsoHeader, div.MsoHeader { margin:0; text-align:center; font-family:'Times New Roman'; font-size:12pt; }
+p.MsoFooter, div.MsoFooter { margin:0; font-family:'Times New Roman'; font-size:11pt; }
+</style>
+</head>
+<body>
+<div class='Section1'>
+  <p>Some text</p>
+
+  <table style='width:100%; border-collapse:collapse; border:1.5pt solid black;'>
+    <thead style='display:table-header-group;'>
+      <tr>
+        <th style='border:1pt solid black;'>Col 1</th>
+        <th style='border:1pt solid black;'>Col 2</th>
+      </tr>
+    </thead>
+    <tfoot style='display:table-footer-group;'>
+      <tr>
+        <td colspan='2' style='border:none; border-top:1.5pt solid black; mso-border-top-alt:solid black 1.5pt; padding:0; height:0;'></td>
+      </tr>
+    </tfoot>
+    <tbody>
+      <tr><td>Data 1</td><td>Data 2</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div style='mso-element:header' id='h1'>
+  <p class='MsoHeader'>Header</p>
+</div>
+<div style='mso-element:footer' id='f1'>
+  <table style='width:100%; border:none; border-top:1.0pt solid black;'>
+    <tr><td>Left footer</td><td>Right footer</td></tr>
+  </table>
+</div>
+</body>
+</html>

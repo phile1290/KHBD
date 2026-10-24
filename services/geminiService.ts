@@ -1,0 +1,561 @@
+import { GoogleGenAI, Part, ThinkingLevel, Type } from "@google/genai";
+import { SYSTEM_PROMPT } from "../constants";
+import { ImageFile, InputState, LessonPlanResponse, PpctLesson, SourceType } from "../types";
+import {
+    fileToBase64,
+    sanitizeAndParseJSON,
+    ensureFourActivitiesInAllPeriods,
+    extractBaseLessonName,
+    extractExplicitPeriodNumber,
+    formatLessonTitleWithPeriod
+} from "../utils";
+
+const LESSON_PLAN_RESPONSE_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+        lesson_full_title: { type: Type.STRING },
+        week: { type: Type.STRING },
+        grade_class: { type: Type.STRING },
+        subject: { type: Type.STRING },
+        date_range: { type: Type.STRING },
+        periods: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    period_number: { type: Type.INTEGER },
+                    objectives: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING }
+                    },
+                    materials: {
+                        type: Type.OBJECT,
+                        properties: {
+                            teacher: { type: Type.STRING },
+                            student: { type: Type.STRING }
+                        },
+                        required: ["teacher", "student"]
+                    },
+                    activities: {
+                        type: Type.ARRAY,
+                        description: "BẮT BUỘC phải có đúng đủ 4 hoạt động dạy học theo thứ tự: 1. Hoạt động mở đầu, 2. Hoạt động hình thành kiến thức mới, 3. Hoạt động luyện tập, thực hành, 4. Hoạt động vận dụng, trải nghiệm.",
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                time: { type: Type.STRING },
+                                name: { type: Type.STRING },
+                                topic: { type: Type.STRING },
+                                rows: {
+                                    type: Type.ARRAY,
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            teacher: { type: Type.STRING },
+                                            student: { type: Type.STRING }
+                                        },
+                                        required: ["teacher", "student"]
+                                    }
+                                }
+                            },
+                            required: ["time", "name", "topic", "rows"]
+                        }
+                    }
+                },
+                required: ["period_number", "objectives", "materials", "activities"]
+            }
+        }
+    },
+    required: ["lesson_full_title", "periods"]
+};
+
+interface GenerateParams {
+    inputData: InputState;
+    sourceType: SourceType;
+    images: ImageFile[];
+    pdfFile?: File | null;
+    pdfFiles?: File[];
+    referencePdfs: File[];
+    ppctFile?: File | null;
+    apiKey: string;
+    uploadedFileCache?: Map<string, { uri: string; mimeType: string; name: string }>;
+}
+
+export const generateLessonPlan = async ({
+    inputData,
+    sourceType,
+    images,
+    pdfFile,
+    pdfFiles = [],
+    referencePdfs,
+    ppctFile,
+    apiKey,
+    uploadedFileCache
+}: GenerateParams): Promise<LessonPlanResponse> => {
+    // Mỗi tuần luôn chỉ dạy 1 tiết học; một bài học có thể kéo dài qua nhiều tuần (Tiết 1, Tiết 2...)
+    const numPeriods = 1;
+    const totalDuration = parseInt(inputData.duration, 10) || 35;
+    
+    let contentInstruction = "";
+    if (sourceType === 'image') {
+        contentInstruction = `NGUỒN DỮ LIỆU CHÍNH: Sử dụng nội dung từ các hình ảnh SGK đính kèm.`;
+    } else {
+        contentInstruction = `NGUỒN DỮ LIỆU CHÍNH: File PDF SGK. NHIỆM VỤ CỦA BẠN: Trích xuất sâu sắc, chi tiết nội dung bài "${inputData.lessonName}" để soạn bài.`;
+    }
+
+    const rawNotes = (inputData.integrationNotes || '').trim();
+    const hasNotes = rawNotes.length > 0 && !/^(\-|\(không tích hợp\)|không tích hợp|không|none)$/i.test(rawNotes);
+    const extraIntegrationDesc = (inputData.additionalIntegrationNotes || '').trim();
+
+    let integrationInstruction = "";
+    if (hasNotes) {
+        const notesLower = rawNotes.toLowerCase();
+        const notesMentionAI = notesLower.includes('ai') || notesLower.includes('trí tuệ nhân tạo');
+        const notesMentionDigitalSkills = notesLower.includes('năng lực số') || notesLower.includes('công nghệ số') || notesLower.includes('chuyển đổi số');
+
+        let integrationComponents: string[] = [];
+        integrationComponents.push(`TÍCH HỢP CHÍNH XÁC THEO CỘT GHI CHÚ PPCT: "${rawNotes}"`);
+
+        if (inputData.integrateAI && notesMentionAI) {
+            integrationComponents.push("Tích hợp Trí tuệ nhân tạo (AI): Ứng dụng công cụ AI phù hợp, nhận diện vai trò AI hỗ trợ học tập");
+        }
+
+        if (inputData.integrateDigitalSkills && notesMentionDigitalSkills) {
+            integrationComponents.push("Tích hợp Năng lực số: Khai thác thiết bị số an toàn, bảo mật thông tin và tạo sản phẩm số");
+        }
+
+        if (extraIntegrationDesc) {
+            integrationComponents.push(`Nội dung & môn học cụ thể bổ sung: "${extraIntegrationDesc}"`);
+        }
+
+        integrationInstruction = `- TUẦN NÀY CÓ GHI CHÚ TÍCH HỢP TRONG PHÂN PHỐI CHƯƠNG TRÌNH:
+  NỘI DUNG TÍCH HỢP CHÍNH XÁC THEO PPCT: "${rawNotes}"
+  ${integrationComponents.map(c => `+ ${c}`).join('\n  ')}
+
+  QUY TẮC THÔNG MINH VÀ CHÍNH XÁC TUYỆT ĐỐI THEO CHỈ ĐẠO CỦA GIÁO VIÊN:
+  + NỘI DUNG CỘT GHI CHÚ PPCT LÀ MỆNH LỆNH SƯ PHẠM CAO NHẤT. Nếu ghi chú PPCT ghi "Tích hợp kỹ năng công dân số", kế hoạch bài dạy CHỈ ĐƯỢC TÍCH HỢP KỸ NĂNG CÔNG DÂN SỐ, TUYỆT ĐỐI KHÔNG tự động chèn AI hay Năng lực số nếu ghi chú không yêu cầu.
+  + MỤC YÊU CẦU CẦN ĐẠT (objectives):
+    * KHÔNG dùng số thứ tự 1, 2, 3, 4. KHÔNG dùng nhãn "kiến thức", "năng lực", "phẩm chất". Dùng thuần túy gạch đầu dòng (- ).
+    * Dòng tích hợp: "- Tích hợp [Nội dung theo ghi chú '${rawNotes}']: [Nội dung cụ thể gắn liền với bài học Lớp ${inputData.grade}, Bài ${inputData.lessonName}]"
+  + CÁC HOẠT ĐỘNG DẠY HỌC:
+    * Chỉ tích hợp đúng nội dung có trong ghi chú "${rawNotes}".
+    * Ghi rõ cú pháp [Tích hợp]: - ... ở cả hoạt động Giáo viên và Học sinh, liên kết trực tiếp với bài học thực tế.`;
+    } else {
+        integrationInstruction = `- TUẦN NÀY KHÔNG CÓ GHI CHÚ TÍCH HỢP TRONG PHÂN PHỐI CHƯƠNG TRÌNH:
+  + NGUYÊN TẮC SƯ PHẠM TUYỆT ĐỐI: Dù ở giao diện có tích chọn AI hay Năng lực số, nhưng bài này trong PPCT KHÔNG CÓ GHI CHÚ thì TUYỆT ĐỐI KHÔNG TÍCH HỢP.
+  + TUYỆT ĐỐI KHÔNG xuất hiện bất kỳ thẻ [Tích hợp] nào trong toàn bộ 4 hoạt động của bài học.
+  + TRONG MỤC YÊU CẦU CẦN ĐẠT (objectives): CHỈ CÓ các gạch đầu dòng (- ) về kiến thức, kỹ năng, năng lực, phẩm chất chuẩn của bài học SGK. TUYỆT ĐỐI KHÔNG CÓ dòng "- Tích hợp...".
+  + Bài dạy này là bài học chuẩn kiến thức, kỹ năng theo chương trình.`;
+    }
+
+    const currentPeriodInLesson =
+        Number(inputData.periodIndexInLesson) ||
+        extractExplicitPeriodNumber(inputData.lessonName || '') ||
+        1;
+    const totalLessonPeriods = Math.max(Number(inputData.totalPeriodsInLesson) || 1, currentPeriodInLesson);
+    const baseLessonName = extractBaseLessonName(inputData.baseLessonName || inputData.lessonName || "Bài học");
+    const exactLessonTitleWithPeriod = formatLessonTitleWithPeriod(baseLessonName, currentPeriodInLesson);
+
+    const userPrompt = `
+        THÔNG TIN CHUNG: Tuần ${inputData.week || '...'}, Môn ${inputData.subject || '...'}, Lớp ${inputData.grade || '...'}.
+        THÔNG TIN BÀI DẠY THEO PHÂN PHỐI CHƯƠNG TRÌNH (PPCT):
+        - TÊN BÀI HỌC GỐC: "${baseLessonName}"
+        - TÊN ĐẦY ĐỦ CỦA TIẾT HỌC TRONG TUẦN NÀY: "${exactLessonTitleWithPeriod}"
+        - SỐ TIẾT DẠY TRONG TUẦN NÀY: ĐÚNG 1 TIẾT DUY NHẤT (Tiết ${currentPeriodInLesson}/${totalLessonPeriods} của bài "${baseLessonName}"). THỜI LƯỢNG: ${totalDuration} phút.
+        
+        **QUY TẮC BẮT BUỘC TUYỆT ĐỐI VỀ ĐỦ 4 HOẠT ĐỘNG DẠY HỌC TRONG TIẾT HỌC (KHÔNG ĐƯỢC BỎ SÓT BẤT KỲ HOẠT ĐỘNG NÀO):**
+        Trong phần tử duy nhất của mảng "periods", mảng "activities" BẮT BUỘC PHẢI CÓ ĐẦY ĐỦ 4 HOẠT ĐỘNG DẠY HỌC theo đúng thứ tự sau:
+        1. "1. Hoạt động mở đầu"
+        2. "2. Hoạt động hình thành kiến thức mới"
+        3. "3. Hoạt động luyện tập, thực hành"
+        4. "4. Hoạt động vận dụng, trải nghiệm"
+        TUYỆT ĐỐI KHÔNG ĐƯỢC BỎ SÓT bất kỳ hoạt động nào trong 4 hoạt động trên!
+
+        **QUY TẮC PHÂN BỔ TIẾN TRÌNH SƯ PHẠM VÀ NỘI DUNG SGK THEO TIẾT HỌC (TUÂN THỦ TUYỆT ĐỐI - CẤM TRÙNG LẶP NỘI DUNG GIỮA CÁC TIẾT):**
+        Bài học "${baseLessonName}" có tổng thời lượng là ${totalLessonPeriods} tiết theo Phân phối chương trình (mỗi tuần dạy 1 tiết).
+        ${totalLessonPeriods > 1 ? `
+        - VỊ TRÍ TIẾT DẠY HIỆN TẠI: ĐÂY LÀ TIẾT ${currentPeriodInLesson} / TỔNG SỐ ${totalLessonPeriods} TIẾT CỦA BÀI HỌC (Tuần ${inputData.week || '...'}).
+        - CHỈ SOẠN DUY NHẤT 1 TIẾT NÀY (TIẾT ${currentPeriodInLesson}), TUYỆT ĐỐI KHÔNG SOẠN GỘP CẢ 2 TIẾT TRONG CÙNG 1 TUẦN!
+        - BẮT BUỘC PHÂN BỔ NỘI DUNG SGK VÀ THỜI LƯỢNG CHÍNH XÁC (ĐỦ 4 HOẠT ĐỘNG):
+          ${currentPeriodInLesson === 1 ? `
+          + BẠN ĐANG SOẠN RIÊNG TIẾT 1 (${totalDuration} phút - ĐỦ 4 HOẠT ĐỘNG):
+            * Mục I. Yêu cầu cần đạt: Chỉ ghi mục tiêu kiến thức, kỹ năng của NỬA ĐẦU BÀI HỌC (Mục 1 / Khám phá 1 của SGK).
+            * Mục II. Đồ dùng dạy học: Thiết bị, học liệu cần cho Mục 1.
+            * 1. Hoạt động mở đầu: Tạo tâm thế hào hứng, dẫn nhập vào bài học và Mục 1.
+            * 2. Hoạt động hình thành kiến thức mới: Khám phá sâu sắc kiến thức trọng tâm của MỤC 1 / PHẦN 1 trong SGK.
+            * 3. Hoạt động luyện tập, thực hành: Thực hành bài tập của MỤC 1 (Bài tập 1) trong SGK.
+            * 4. Hoạt động vận dụng, trải nghiệm: Vận dụng kiến thức Mục 1 vào thực tế, củng cố và dặn dò chuẩn bị cho Tiết 2.
+            * CẤM TUYỆT ĐỐI: Không được dồn toàn bộ bài vào tiết 1, không dạy trước nội dung Mục 2 của Tiết 2, và KHÔNG ĐƯỢC bỏ sót Hoạt động 4!
+          ` : `
+          + BẠN ĐANG SOẠN RIÊNG TIẾT ${currentPeriodInLesson} (${totalDuration} phút - ĐỦ 4 HOẠT ĐỘNG):
+            * ĐÂY LÀ TIẾT ${currentPeriodInLesson} (TIẾT NỐI TIẾP) CỦA BÀI HỌC. HỌC SINH ĐÃ HỌC TIẾT TRƯỚC ĐÓ RỒI.
+            * Mục I. Yêu cầu cần đạt: Ghi mục tiêu của MỤC TIẾP THEO (Mục 2 / Khám phá 2 của SGK) và năng lực vận dụng toàn bài.
+            * Mục II. Đồ dùng dạy học: Thiết bị, học liệu cần cho Mục 2 và bài thực hành nâng cao/tổng hợp.
+            * 1. Hoạt động mở đầu: BẮT BUỘC KHỞI ĐỘNG KẾT NỐI: Tổ chức trò chơi / câu hỏi đố vui / nhắc lại KIẾN THỨC ĐÃ HỌC Ở TIẾT 1, tạo cầu nối tự nhiên sang kiến thức mới của Tiết ${currentPeriodInLesson}.
+            * 2. Hoạt động hình thành kiến thức mới: Khám phá sâu sắc kiến thức MỤC 2 / PHẦN TIẾP THEO trong SGK. CẤM TUYỆT ĐỐI KHÔNG DẠY LẠI MỤC 1 ĐÃ HỌC Ở TIẾT 1!
+            * 3. Hoạt động luyện tập, thực hành: Thực hành bài tập tiếp theo (Bài tập 2, Bài tập 3...) hoặc bài thực hành tổng hợp trong SGK. CẤM TUYỆT ĐỐI KHÔNG LẶP LẠI bài tập của Tiết 1!
+            * 4. Hoạt động vận dụng, trải nghiệm: Vận dụng toàn bộ bài học vào thực tiễn đời sống, tạo sản phẩm và dặn dò tổng kết bài học.
+          `}
+        ` : `
+        - Bài học trọn vẹn 1 tiết (${totalDuration} phút): Bắt buộc phân bổ sâu sắc, đầy đủ cả 4 hoạt động (1. Hoạt động mở đầu, 2. Hoạt động hình thành kiến thức mới, 3. Hoạt động luyện tập, thực hành, 4. Hoạt động vận dụng, trải nghiệm) theo chuẩn SGK.
+        `}
+
+        - QUY ĐỊNH CẤU TRÚC JSON BẮT BUỘC:
+          + Trường "lesson_full_title" BẮT BUỘC ghi chính xác: "${exactLessonTitleWithPeriod}".
+          + Mảng "periods" trong JSON kết quả BẮT BUỘC CHỈ CÓ ĐÚNG 1 PHẦN TỬ DUY NHẤT (periods.length === 1) với "period_number": ${currentPeriodInLesson}.
+          + Phần tử duy nhất trong "periods" PHẢI CÓ mảng "activities" gồm ĐÚNG 4 HOẠT ĐỘNG:
+            * activities[0].name = "1. Hoạt động mở đầu"
+            * activities[1].name = "2. Hoạt động hình thành kiến thức mới"
+            * activities[2].name = "3. Hoạt động luyện tập, thực hành"
+            * activities[3].name = "4. Hoạt động vận dụng, trải nghiệm"
+
+        GHI CHÚ THÊM: ${inputData.context || ''}
+        
+        ${contentInstruction}
+        **YÊU CẦU TÍCH HỢP:**
+        ${integrationInstruction}
+        - Nếu có Tài liệu tham khảo, hãy dùng nó.
+        
+        **NHẮC LẠI YÊU CẦU BẮT BUỘC:**
+        1. **CẤU TRÚC BẮT BUỘC:** Đủ 4 hoạt động dạy học (1. Hoạt động mở đầu, 2. Hoạt động hình thành kiến thức mới, 3. Hoạt động luyện tập, thực hành, 4. Hoạt động vận dụng, trải nghiệm) cho tiết học. Tuyệt đối không bỏ sót bất kỳ hoạt động nào.
+        2. **YÊU CẦU CẦN ĐẠT (QUY CHUẨN MỚI BẮT BUỘC):**
+           - TUYỆT ĐỐI KHÔNG sử dụng đánh số 1, 2, 3, 4.
+           - TUYỆT ĐỐI KHÔNG ghi "kiến thức", "năng lực", "phẩm chất", "Kiến thức, kỹ năng:", "Về năng lực:",...
+           - Thể hiện thuần túy bằng các GẠCH ĐẦU DÒNG NỘI DUNG. Mỗi phần tử trong mảng "objectives" BẮT ĐẦU bằng dấu gạch ngang "- ".
+           - NẾU CÓ TÍCH HỢP: Mỗi lĩnh vực/môn học tích hợp là một gạch đầu dòng riêng biệt, bắt đầu bằng "- Tích hợp [Tên môn học/lĩnh vực]: [Nội dung...]".
+        3. **CHIỀU SÂU SƯ PHẠM, KPI GẠCH ĐẦU DÒNG VÀ NGUYÊN TẮC 1:1 NGANG HÀNG (Không tính hình ảnh và tích hợp):**
+            - Nội dung phải có chiều sâu chuyên môn, mô tả rõ câu hỏi gợi mở của GV, cách thức tổ chức hoạt động (nhóm đôi, nhóm 4, trò chơi, phiếu học tập, thảo luận...) và câu trả lời/thao tác cụ thể của HS bám sát bài học trong SGK.
+            - 1. Hoạt động mở đầu >= 4 gạch đầu dòng.
+            - 2. Hoạt động hình thành kiến thức mới >= 8 gạch đầu dòng.
+            - 3. Hoạt động luyện tập, thực hành >= 10 gạch đầu dòng.
+            - 4. Hoạt động vận dụng, trải nghiệm >= 4 gạch đầu dòng.
+            - BẮT BUỘC NGUYÊN TẮC 1:1 NGANG HÀNG: Cột "Hoạt động của Giáo viên" có bao nhiêu gạch đầu dòng thì cột "Hoạt động của Học sinh" BẮT BUỘC có đúng bấy nhiêu gạch đầu dòng đáp lại tương ứng (Tỷ lệ 1:1 tuyệt đối).
+        4. **HÌNH ẢNH MINH HỌA TRỰC QUAN:**
+            - Tối thiểu 3 hình/tiết.
+            - CHỈ CÓ Ở CỘT GIÁO VIÊN.
+            - Không dùng gạch đầu dòng.
+            - Sử dụng cú pháp [Gợi ý hình ảnh: <Mô tả chi tiết nội dung hình ảnh bằng tiếng Việt bám sát bài học>] đặt ngay dưới bước của Giáo viên để hệ thống tự động kết xuất thành hình ảnh minh họa thực tế.
+        5. **THỜI GIAN LINH HOẠT VÀ CHÍNH XÁC:**
+            - Phân bổ thời gian linh hoạt, bám sát nội dung thực tế của 4 hoạt động (ví dụ đối với tiết ${totalDuration} phút: Mở đầu 4-5 phút, KT mới 12-15 phút, Luyện tập 11-14 phút, Vận dụng 4-5 phút).
+            - BẮT BUỘC: Tổng số phút của cả 4 hoạt động cộng lại PHẢI BẰNG ĐÚNG CHÍNH XÁC ${totalDuration} phút.
+    `;
+
+    let finalApiKey = apiKey;
+
+    if (!finalApiKey) {
+        try {
+            finalApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+        } catch(e) {}
+    }
+    
+    if (!finalApiKey) {
+        throw new Error("Vui lòng nhập Gemini API Key để tạo giáo án.");
+    }
+
+    const parts: any[] = [];
+    let uploadedFileNames: string[] = [];
+
+    const uploadAndPush = async (file: File) => {
+        if (file.size > 100 * 1024 * 1024) {
+            throw new Error(`Kích thước file ${file.name} vượt quá 100MB.`);
+        }
+
+        let mimeType = file.type;
+        if (!mimeType) {
+            if (file.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
+            else if (file.name.toLowerCase().endsWith('.png')) mimeType = 'image/png';
+            else if (file.name.toLowerCase().endsWith('.jpg') || file.name.toLowerCase().endsWith('.jpeg')) mimeType = 'image/jpeg';
+            else mimeType = 'application/pdf';
+        }
+
+        if (file.size <= 18 * 1024 * 1024) {
+            const base64Data = await fileToBase64(file);
+            parts.push({
+                inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType
+                }
+            });
+        } else {
+            const cacheKey = `${finalApiKey.slice(-6)}-${file.name}-${file.size}-${file.lastModified}`;
+            if (uploadedFileCache && uploadedFileCache.has(cacheKey)) {
+                const cached = uploadedFileCache.get(cacheKey)!;
+                parts.push({
+                    fileData: { fileUri: cached.uri, mimeType: cached.mimeType }
+                });
+                return;
+            }
+
+            const ai = new GoogleGenAI({ apiKey: finalApiKey });
+            const uploaded = await ai.files.upload({ file: file, mimeType: mimeType } as any);
+            
+            if (uploadedFileCache) {
+                uploadedFileCache.set(cacheKey, { uri: uploaded.uri, mimeType: uploaded.mimeType, name: uploaded.name });
+            } else {
+                uploadedFileNames.push(uploaded.name);
+            }
+
+            parts.push({
+                fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }
+            });
+        }
+    };
+    
+    if (sourceType === 'pdf') {
+        const effectivePdfFiles = pdfFiles.length > 0 ? pdfFiles : (pdfFile ? [pdfFile] : []);
+        if (effectivePdfFiles.length > 0) {
+            parts.push({ text: "DƯỚI ĐÂY LÀ (CÁC) FILE PDF SÁCH GIÁO KHOA CHÍNH THỨC CỦA MÔN HỌC (TRA CỨU VÀ TRÍCH XUẤT CHÍNH XÁC NỘI DUNG BÀI HỌC CẦN SOẠN):" });
+            for (const f of effectivePdfFiles) {
+                await uploadAndPush(f);
+            }
+        }
+    } else if (sourceType === 'image' && images.length > 0) {
+        for (const img of images) {
+            await uploadAndPush(img.file);
+        }
+    }
+
+    if (referencePdfs && referencePdfs.length > 0) {
+        parts.push({ text: "DƯỚI ĐÂY LÀ (CÁC) FILE PDF TÀI LIỆU THAM KHẢO (SỬ DỤNG LÀM KHUNG CƠ SỞ CHO NỘI DUNG TÍCH HỢP):" });
+        for (const ref of referencePdfs) {
+            await uploadAndPush(ref);
+        }
+    }
+
+    if (ppctFile) {
+        parts.push({ text: "DƯỚI ĐÂY LÀ FILE PDF PHÂN PHỐI CHƯƠNG TRÌNH (PPCT) CỦA MÔN HỌC (BẮT BUỘC ĐỐI CHIẾU CHÍNH XÁC TÊN BÀI VÀ SỐ TIẾT QUY ĐỊNH):" });
+        await uploadAndPush(ppctFile);
+    }
+
+    parts.push({ text: userPrompt });
+
+    try {
+        // Sử dụng mô hình chuẩn của hệ thống kết hợp ThinkingLevel.MEDIUM (thay vì MINIMAL)
+        // để vừa tiết kiệm Token & hạn mức Quota, vừa kích hoạt tư duy chuyên sâu giúp bài soạn có chiều sâu sư phạm và đủ 4 hoạt động.
+        const modelsToTry = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+        let delay = 2000;
+        const maxAttempts = 6;
+
+        for (let i = 0; i < maxAttempts; i++) {
+            const currentModel = modelsToTry[i % modelsToTry.length];
+            try {
+                const ai = new GoogleGenAI({
+                    apiKey: finalApiKey
+                });
+
+                const response = await ai.models.generateContent({
+                    model: currentModel,
+                    contents: { parts },
+                    config: {
+                        systemInstruction: SYSTEM_PROMPT,
+                        responseMimeType: "application/json",
+                        responseSchema: LESSON_PLAN_RESPONSE_SCHEMA,
+                        temperature: 0.55,
+                        thinkingConfig: {
+                            thinkingLevel: ThinkingLevel.MEDIUM
+                        }
+                    }
+                });
+                const text = response.text;
+
+                if (!text) throw new Error("AI trả về kết quả rỗng.");
+                const parsed = sanitizeAndParseJSON(text);
+
+                // Kiểm tra nghiêm ngặt: Mỗi tiết học có đủ 4 hoạt động hay chưa
+                const hasMissingActivities = (parsed.periods || []).some(
+                    p => !Array.isArray(p.activities) || p.activities.length < 4
+                );
+                if (hasMissingActivities && i < maxAttempts - 2) {
+                    throw new Error("Thiếu hoạt động dạy học: kết quả chưa đủ 4 hoạt động bắt buộc, đang tự động yêu cầu tạo lại đầy đủ.");
+                }
+
+                // Chuẩn hóa và đảm bảo tuyệt đối 100% mỗi tiết đều có đầy đủ 4 hoạt động theo đúng thứ tự
+                return ensureFourActivitiesInAllPeriods(parsed, inputData);
+            } catch (err: any) {
+                console.warn(`Gemini API retry warning (attempt ${i + 1}/${maxAttempts}, model ${currentModel}):`, err?.message || err);
+
+                const errMsg = err.message ? String(err.message).toLowerCase() : '';
+                const isRetryable = (
+                    errMsg.includes('quota') ||
+                    errMsg.includes('503') ||
+                    errMsg.includes('429') ||
+                    errMsg.includes('404') ||
+                    errMsg.includes('not found') ||
+                    errMsg.includes('not_found') ||
+                    errMsg.includes('resource_exhausted') ||
+                    errMsg.includes('resource exhausted') ||
+                    errMsg.includes('fetch') ||
+                    errMsg.includes('json') ||
+                    errMsg.includes('parse') ||
+                    errMsg.includes('định dạng') ||
+                    errMsg.includes('thiếu hoạt động') ||
+                    errMsg.includes('rỗng')
+                );
+
+                if (i === maxAttempts - 1 || !isRetryable) {
+                    if (isRetryable) {
+                        throw new Error("API Key đã vượt giới hạn lượt gọi (Quota/429) sau nhiều lần thử lại. Vui lòng dùng API Key mới hoặc đợi vài phút.");
+                    }
+                    throw new Error(err.message || "Lỗi không xác định khi gọi AI.");
+                }
+
+                if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('resource_exhausted')) {
+                    delay = Math.max(delay, 4000);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 1.4;
+            }
+        }
+        throw new Error("Không thể kết nối với AI sau nhiều lần thử.");
+    } finally {
+        if (uploadedFileNames.length > 0 && finalApiKey) {
+            try {
+                const ai = new GoogleGenAI({ apiKey: finalApiKey });
+                for (const name of uploadedFileNames) {
+                    await ai.files.delete({ name }).catch(() => {});
+                }
+            } catch(e) {
+                console.warn("Lỗi khi xoá file tạm:", e);
+            }
+        }
+    }
+};
+
+export const extractLessonsFromPpct = async (
+    ppctFile: File,
+    apiKey: string
+): Promise<PpctLesson[]> => {
+    let finalApiKey = apiKey;
+    if (!finalApiKey) {
+        try {
+            finalApiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || "";
+        } catch(e) {}
+    }
+    
+    if (!finalApiKey) {
+        throw new Error("Vui lòng nhập Gemini API Key để phân tích file Phân phối chương trình.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: finalApiKey });
+
+    let mimeType = ppctFile.type || 'application/pdf';
+    if (!mimeType) {
+        if (ppctFile.name.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
+        else mimeType = 'application/pdf';
+    }
+
+    let filePart: any;
+    let uploadedName: string | null = null;
+    if (ppctFile.size <= 18 * 1024 * 1024) {
+        const base64Data = await fileToBase64(ppctFile);
+        filePart = {
+            inlineData: { data: base64Data, mimeType }
+        };
+    } else {
+        const uploaded = await ai.files.upload({ file: ppctFile, mimeType } as any);
+        uploadedName = uploaded.name;
+        filePart = {
+            fileData: { fileUri: uploaded.uri, mimeType: uploaded.mimeType }
+        };
+    }
+
+    const prompt = `
+VAI TRÒ: CHUYÊN GIA ĐỌC VÀ TRÍCH XUẤT TÀI LIỆU SƯ PHẠM.
+NHIỆM VỤ: Đọc tài liệu đính kèm (đây là file Phân phối chương trình - PPCT chứa bảng phân phối chương trình môn học).
+Bảng có thể gồm 4 cột chính theo quy chuẩn mới:
+1. Cột 1: TUẦN (để đầu tiên, ví dụ: "Tuần 1", "Tuần 2", ... hoặc "1", "2", ...)
+2. Cột 2: TÊN BÀI (ví dụ: "Bài 1: Thông tin và quyết định", "Bài 2: Xử lý thông tin",...)
+3. Cột 3: SỐ TIẾT (số tiết của bài học đó, ví dụ: 3, 4, 2,...)
+4. Cột 4: GHI CHÚ (mục đích nhập các nội dung tích hợp cũng như môn học tích hợp, ví dụ "Tích hợp môn Tiếng Việt và AI", nếu để trống hoặc không tích hợp thì ghi "")
+(Hoặc bảng 2 cột dạng cũ: Cột Tên bài và Cột Số tiết - nếu không có cột tuần, hãy tự đánh số Tuần 1, Tuần 2,...).
+
+Hãy trích xuất danh sách TẤT CẢ các tuần/bài học trong bảng từ đầu đến cuối một cách chính xác tuyệt đối theo đúng file tải lên.
+
+QUY TẮC BẮT BUỘC:
+1. Đọc đúng toàn bộ danh sách từng hàng từ trên xuống dưới theo thứ tự trong bảng.
+2. Tuần (week): Trích xuất chuỗi tuần, chuẩn hoá thành "Tuần 1", "Tuần 2", ... theo đúng dữ liệu của file.
+3. Tên bài (lessonName): Giữ nguyên tên bài đầy đủ. Bỏ qua các hàng tiêu đề cột hoặc hàng chú thích chung của tài liệu.
+4. Số tiết (periods): Phải là một số nguyên dương (Ví dụ: 3, 4, 2, 1,...).
+5. Ghi chú (notes): Trích xuất chính xác nội dung cột ghi chú nếu có (ví dụ: các nội dung tích hợp, môn học tích hợp). Nếu cột ghi chú trống, hoặc ghi "-", "(Không tích hợp)", "Không" thì trả về chuỗi rỗng "".
+6. Định dạng trả về: BẮT BUỘC chỉ trả về duy nhất chuỗi JSON hợp lệ theo cấu trúc sau:
+{
+  "lessons": [
+    {
+      "week": "Tuần 1",
+      "lessonName": "Bài 1: Thông tin và quyết định",
+      "periods": 3,
+      "notes": ""
+    },
+    {
+      "week": "Tuần 20",
+      "lessonName": "Bài 10: Thực hành tạo sản phẩm số",
+      "periods": 2,
+      "notes": "Tích hợp môn Tiếng Việt: Luyện viết đoạn văn; Tích hợp AI tạo sản phẩm số"
+    },
+    {
+      "week": "Tuần 21",
+      "lessonName": "Bài 11: Em tìm kiếm thông tin trên Internet",
+      "periods": 2,
+      "notes": "Tích hợp môn Khoa học: Khám phá tự nhiên; Tích hợp Năng lực số"
+    }
+  ]
+}
+TUYỆT ĐỐI KHÔNG thêm văn bản giải thích hay markdown bên ngoài chuỗi JSON.
+`;
+
+    try {
+        let responseText = '';
+        const ppctModels = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-flash-latest'];
+        let lastError: any = null;
+
+        for (const ppctModel of ppctModels) {
+            try {
+                const response = await ai.models.generateContent({
+                    model: ppctModel,
+                    contents: [
+                        filePart,
+                        { text: prompt }
+                    ],
+                    config: {
+                        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW }
+                    }
+                });
+                responseText = response.text || '';
+                if (responseText) break;
+            } catch(e) {
+                lastError = e;
+                console.warn(`PPCT extraction attempt with ${ppctModel} failed:`, e);
+            }
+        }
+
+        if (!responseText && lastError) {
+            throw lastError;
+        }
+
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("Không tìm thấy cấu trúc JSON hợp lệ trong phản hồi.");
+        }
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed.lessons) && parsed.lessons.length > 0) {
+            return parsed.lessons.map((l: any, index: number) => {
+                const weekStr = l.week ? String(l.week).trim() : `Tuần ${index + 1}`;
+                const rawNotes = l.notes ? String(l.notes).trim() : '';
+                const cleanNotes = /^(\-|\(không tích hợp\)|không tích hợp|không|none)$/i.test(rawNotes) ? '' : rawNotes;
+                return {
+                    week: weekStr.startsWith('Tuần') ? weekStr : `Tuần ${weekStr}`,
+                    lessonName: String(l.lessonName || '').trim(),
+                    periods: 1,
+                    notes: cleanNotes
+                };
+            }).filter((l: PpctLesson) => l.lessonName.length > 0);
+        }
+        throw new Error("Không tìm thấy bài học nào trong bảng phân phối chương trình.");
+    } finally {
+        if (uploadedName) {
+            try {
+                await ai.files.delete({ name: uploadedName });
+            } catch(e) {}
+        }
+    }
+};

@@ -1,0 +1,26 @@
+
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<style>
+@page Section1 {
+  size: 21cm 29.7cm;
+  margin: 2cm 2cm 2cm 2.5cm;
+  mso-header-margin: 36pt;
+  mso-footer-margin: 36pt;
+  mso-header: h1;
+  mso-footer: f1;
+}
+div.Section1 { page: Section1; }
+p.MsoHeader, div.MsoHeader { margin:0; text-align:center; }
+p.MsoFooter, div.MsoFooter { margin:0; }
+</style>
+</head>
+<body>
+<div class='Section1'>
+  <p>Hello world body</p>
+  <div style='mso-element:header' id='h1'><p class='MsoHeader'>Header text</p></div>
+  <div style='mso-element:footer' id='f1'><p class='MsoFooter'>Footer text</p></div>
+</div>
+</body>
+</html>

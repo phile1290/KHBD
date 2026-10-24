@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+/* Custom Print styling for A4 Lesson Plan Printing */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 13pt !important;
+    line-height: 1.35 !important;
+  }
+
+  header, 
+  footer, 
+  .no-print, 
+  button, 
+  nav {
+    display: none !important;
+  }
+
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print\:border-none {
+    border: none !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+
+  h1, h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #000000 !important;
+  }
+
+  table {
+    page-break-inside: auto;
+    break-inside: auto;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  td, th {
+    border: 1px solid #000000 !important;
+    padding: 6px !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 20mm 15mm 20mm 25mm;
+  }
+}
