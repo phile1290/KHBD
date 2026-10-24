@@ -57,13 +57,13 @@ NHIỆM VỤ: SOẠN KẾ HOẠCH BÀI DẠY (KHBD) CHI TIẾT, CHÍNH XÁC TUY�
 4. **Hoạt động Vận dụng, trải nghiệm:** Tối thiểu **4** gạch đầu dòng nội dung.
 *QUY TẮC ĐỐI XỨNG NGANG HÀNG 1:1 (BẮT BUỘC):* Số lượng gạch đầu dòng ở cột "Hoạt động của Giáo viên" và cột "Hoạt động của Học sinh" phải BẰNG NHAU TUYỆT ĐỐI (tỷ lệ 1-1).
 
-**V. THUẬT TOÁN HÌNH ẢNH TRỰC QUAN BÁM SÁT NỘI DUNG CÂU VĂN PHÍA TRÊN & KÊNH HÌNH SGK:**
-- **Số lượng & Vị trí:** Tối thiểu **3** hình ảnh trực quan cho mỗi tiết dạy, CHỈ đặt ở cột **Hoạt động của Giáo viên**, ngay bên dưới câu văn của Giáo viên khi trình chiếu hoặc yêu cầu học sinh quan sát vật thật, học cụ, thiết bị, tình huống hoặc giao diện có trong bài học SGK. Hệ thống sẽ trực tiếp tạo hình ảnh hiển thị ngay tại vị trí đó.
-- **NGUYÊN TẮC TRỰC QUAN HÓA CHÍNH XÁC TUYỆT ĐỐI (CẤM INFOGRAPHIC, CẤM MINDMAP, CẤM HÌNH CHUNG CHUNG):**
-  + Hình ảnh được tạo ra phải trực quan hóa chính xác **vật thể thực tế, học cụ, dụng cụ, mô hình, tình huống minh họa hoặc giao diện màn hình** được nhắc đến ở câu văn ngay phía trên nó và trong bài học SGK.
-  + **TUYỆT ĐỐI KHÔNG** mô tả theo kiểu sơ đồ tư duy (mindmap), đồ họa thông tin (infographic), sơ đồ khối nhiều chữ, phiếu học tập, và không vẽ cảnh lớp học chung chung.
-  + Mỗi bài học và mỗi hoạt động có đối tượng quan sát khác nhau, vì vậy phần mô tả hình ảnh phải viết bằng tiếng Việt thật cụ thể, chi tiết về hình dáng, màu sắc, thành phần trực quan của chính đối tượng/giao diện vừa nêu ở câu văn ngay phía trên (ví dụ: viết bằng lời văn mô tả rõ các vật thể/dụng cụ thực tế đặt trên bàn hoặc giao diện cụ thể đang hiển thị trên màn hình khớp 100% với câu lệnh của giáo viên ở dòng trên).
-- **Cú pháp bắt buộc:** \`[Gợi ý hình ảnh: Mô tả trực관, cụ thể, chân thực về chính đối tượng, vật thể, học cụ hoặc màn hình giao diện vừa nêu ở câu văn ngay phía trên]\` (Không dùng dấu gạch đầu dòng trước thẻ này).
+**V. THUẬT TOÁN HÌNH ẢNH TRỰC QUAN BÁM SÁT NỘI DUNG CÂU VĂN PHÍA TRÊN & KÊNH HÌNH SGK (BẮT BUỘC TỪ 3 ĐẾN 4 HÌNH / TIẾT):**
+- **Số lượng & Vị trí bắt buộc:** MỖI TIẾT DẠY BẮT BUỘC PHẢI CÓ ĐÚNG **TỪ 3 ĐẾN 4 HÌNH ẢNH MINH HỌA TRỰC QUAN** (ví dụ: 1 hình ở Hoạt động 1 Mở đầu, 1 đến 2 hình ở Hoạt động 2 Hình thành kiến thức mới, 1 hình ở Hoạt động 3 Luyện tập, thực hành), CHỈ đặt ở cột **Hoạt động của Giáo viên**, ngay bên dưới câu văn của Giáo viên khi trình chiếu hoặc yêu cầu học sinh quan sát vật thật, học cụ, thiết bị, các bộ phận cấu tạo, tình huống hoặc giao diện có trong bài học SGK. Hệ thống sẽ trực tiếp tạo và hiển thị hình ảnh ngay tại vị trí đó.
+- **NGUYÊN TẮC TRỰC QUAN HÓA CHÍNH XÁC TUYỆT ĐỐI (CẤM INFOGRAPHIC, CẤM MINDMAP, CẤM HÌNH CHUNG CHUNG, KHÔNG ÁP ĐẶT MẪU CỐ ĐỊNH):**
+  + Mỗi bài học và mỗi phần kiến thức có đối tượng quan sát khác nhau, vì vậy hình ảnh tạo ra phải trực quan hóa chính xác **vật thể thực tế, các bộ phận cấu tạo, học cụ, dụng cụ, mô hình hoặc giao diện màn hình** được nhắc đến ở câu văn ngay phía trên nó và trong bài học SGK.
+  + Ví dụ tham khảo về phong cách trực quan (chỉ để tham khảo cách mô tả trực quan, tuyệt đối không áp đặt nội dung của bài này sang bài khác): Nếu câu văn phía trên yêu cầu học sinh quan sát các bộ phận của máy tính thì mô tả rõ hình ảnh bộ máy tính để bàn và các linh kiện/bộ phận thực tế đặt trên mặt bàn gỗ kèm nhãn tên tiếng Việt chỉ vào từng bộ phận; nếu câu văn phía trên yêu cầu quan sát vật mẫu, dụng cụ, mô hình hay giao diện phần mềm/trang web nào thì mô tả chi tiết, chân thực đúng vật mẫu, dụng cụ, mô hình hay màn hình giao diện đó.
+  + **TUYỆT ĐỐI KHÔNG** mô tả theo kiểu sơ đồ tư duy (mindmap), đồ họa thông tin chia ô chữ (infographic), sơ đồ khối nhiều chữ, phiếu học tập, và không vẽ cảnh lớp học chung chung.
+- **Cú pháp bắt buộc:** \`[Gợi ý hình ảnh: Mô tả trực quan, cụ thể, chân thực về chính đối tượng, các bộ phận vật thể, học cụ hoặc màn hình giao diện vừa nêu ở câu văn ngay phía trên]\` (Không dùng dấu gạch đầu dòng trước thẻ này).
 
 **VI. QUY TẮC THỂ HIỆN TÍCH HỢP TRONG CÁC HOẠT ĐỘNG DẠY HỌC (MẠCH LẠC & CHÍNH XÁC TUYỆT ĐỐI):**
 - NẾU TUẦN ĐÓ CÓ TÍCH HỢP:

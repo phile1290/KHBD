@@ -9,7 +9,28 @@
 import { GoogleGenAI } from "@google/genai";
 import { LessonPlanResponse } from "../types";
 
-const imageDataUrlCache = new Map<string, string>();
+// Tách riêng bộ nhớ đệm ảnh AI thực tế và ảnh vẽ Canvas dự phòng để ảnh AI luôn được ưu tiên tuyệt đối
+const aiGeneratedImageCache = new Map<string, string>();
+const canvasFallbackCache = new Map<string, string>();
+let preferredImageModel: string | null = null;
+
+type ImageUpdateListener = () => void;
+const imageUpdateListeners = new Set<ImageUpdateListener>();
+
+export const subscribeToImageUpdates = (listener: ImageUpdateListener): (() => void) => {
+    imageUpdateListeners.add(listener);
+    return () => {
+        imageUpdateListeners.delete(listener);
+    };
+};
+
+const notifyImageListeners = () => {
+    imageUpdateListeners.forEach(fn => {
+        try {
+            fn();
+        } catch {}
+    });
+};
 
 export const isImageHintLine = (line: string): boolean => {
     const trimmed = (line || '').trim();
@@ -1417,97 +1438,213 @@ const drawSpecificItemsCardsScene = (
 };
 
 /**
- * 10. HÌNH ẢNH TRỰC QUAN BỘ MÁY TÍNH ĐỂ BÀN 3D ĐẶT TRÊN BÀN GỖ (MÀN HÌNH HIỂN THỊ PHẦN MỀM, THÂN MÁY, BÀN PHÍM, CHUỘT, LOA)
- * (Không vẽ bảng chia 2 cột chữ Phần cứng / Phần mềm kiểu infographic)
+/**
+ * 10. HÌNH ẢNH TRỰC QUAN BỘ MÁY TÍNH ĐỂ BÀN & CÁC BỘ PHẬN LINH KIỆN TRÊN BÀN GỖ SÁNG MÀU
+ * (Bố cục trực quan như ảnh chụp thực tế trên mặt bàn gỗ: Màn hình, Thùng máy (Case), Loa, Bàn phím, Chuột,
+ *  Bo mạch chủ (Mainboard), Bộ vi xử lý (CPU), Bộ nhớ RAM, Card đồ họa (VGA), Ổ cứng (SSD/HDD), Nguồn (PSU))
  */
 const drawHardwareSoftwareOverviewScene = (ctx: CanvasRenderingContext2D) => {
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, 420);
-    bgGrad.addColorStop(0, '#F0F9FF');
-    bgGrad.addColorStop(0.7, '#E0F2FE');
-    bgGrad.addColorStop(1, '#BAE6FD');
-    drawRoundedRect(ctx, 4, 4, 752, 412, 12, bgGrad, '#0284C7', 2);
+    // Nền tường phòng học / studio sáng ấm
+    const wallGrad = ctx.createLinearGradient(0, 0, 0, 185);
+    wallGrad.addColorStop(0, '#F5F0EB');
+    wallGrad.addColorStop(1, '#E6DDD3');
+    drawRoundedRect(ctx, 4, 4, 752, 412, 12, wallGrad, '#CBD5E1', 2);
 
-    // Mặt bàn gỗ thực hành
-    const tableGrad = ctx.createLinearGradient(0, 286, 0, 412);
-    tableGrad.addColorStop(0, '#D97706');
-    tableGrad.addColorStop(0.55, '#B45309');
-    tableGrad.addColorStop(1, '#78350F');
-    drawRoundedRect(ctx, 12, 288, 736, 118, 8, tableGrad, '#78350F', 1.5);
+    // Mặt bàn gỗ sồi sáng màu trải rộng (góc nhìn từ trên cao chếch xuống)
+    const deskGrad = ctx.createLinearGradient(0, 148, 0, 412);
+    deskGrad.addColorStop(0, '#E7CBA9');
+    deskGrad.addColorStop(0.5, '#DEC09A');
+    deskGrad.addColorStop(1, '#CFA97E');
+    drawRoundedRect(ctx, 8, 150, 744, 262, 10, deskGrad, '#B89064', 1.5);
 
-    // 1. Thân máy tính (Case CPU) đặt bên phải
+    const drawPartLabelTag = (text: string, cx: number, cy: number, targetX?: number, targetY?: number) => {
+        ctx.save();
+        if (targetX !== undefined && targetY !== undefined) {
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(targetX, targetY);
+            ctx.strokeStyle = '#0F172A';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        ctx.font = 'bold 13px Arial, sans-serif';
+        const lines = text.split('\n');
+        const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
+        const boxW = maxW + 16;
+        const boxH = lines.length * 16 + 8;
+        drawRoundedRect(
+            ctx,
+            cx - boxW / 2,
+            cy - boxH / 2,
+            boxW,
+            boxH,
+            6,
+            'rgba(255, 255, 255, 0.94)',
+            '#CBD5E1',
+            1.2
+        );
+        ctx.fillStyle = '#0F172A';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        lines.forEach((line, idx) => {
+            const yOffset = (idx - (lines.length - 1) / 2) * 15;
+            ctx.fillText(line, cx, cy + yOffset);
+        });
+        ctx.restore();
+    };
+
+    // 1. Màn hình máy tính (Trung tâm phía trên)
+    // Chân đế chữ V
     ctx.beginPath();
-    ctx.ellipse(608, 324, 76, 16, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.moveTo(355, 142);
+    ctx.lineTo(285, 186);
+    ctx.lineTo(295, 192);
+    ctx.lineTo(360, 154);
+    ctx.lineTo(425, 192);
+    ctx.lineTo(435, 186);
+    ctx.lineTo(365, 142);
+    ctx.closePath();
+    ctx.fillStyle = '#1E293B';
     ctx.fill();
-    drawRoundedRect(ctx, 542, 64, 132, 256, 10, '#1E293B', '#0F172A', 3);
-    drawRoundedRect(ctx, 558, 84, 100, 24, 4, '#334155', '#64748B', 1.5);
+    drawRoundedRect(ctx, 348, 122, 24, 30, 3, '#334155');
+    // Khung màn hình Windows xanh dương sắc nét
+    drawRoundedRect(ctx, 212, 18, 296, 114, 6, '#0F172A', '#334155', 3);
+    const screenGrad = ctx.createLinearGradient(218, 24, 502, 126);
+    screenGrad.addColorStop(0, '#0284C7');
+    screenGrad.addColorStop(1, '#0369A1');
+    drawRoundedRect(ctx, 218, 24, 284, 100, 3, screenGrad);
+    // Cửa sổ biểu tượng Windows trên nền màn hình
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+    ctx.fillRect(410, 48, 22, 18);
+    ctx.fillRect(435, 48, 22, 18);
+    ctx.fillRect(410, 69, 22, 18);
+    ctx.fillRect(435, 69, 22, 18);
+    // Thanh Taskbar
+    drawRoundedRect(ctx, 218, 118, 284, 6, 1, '#0F172A');
+
+    // 2. Hai Loa máy tính đặt 2 bên màn hình
+    // Loa trái
+    drawRoundedRect(ctx, 156, 106, 44, 72, 6, '#1E293B', '#0F172A', 2);
     ctx.beginPath();
-    ctx.arc(608, 146, 12, 0, Math.PI * 2);
-    ctx.fillStyle = '#22C55E';
-    ctx.fill();
-    drawRoundedRect(ctx, 574, 182, 68, 12, 3, '#38BDF8');
-    drawRoundedRect(ctx, 574, 202, 68, 12, 3, '#38BDF8');
-
-    // 2. Màn hình máy tính 3D ở trung tâm hiển thị các biểu tượng phần mềm trực quan
-    ctx.beginPath();
-    ctx.ellipse(310, 316, 92, 14, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.24)';
-    ctx.fill();
-    drawRoundedRect(ctx, 286, 258, 48, 48, 4, '#475569', '#1E293B', 2);
-    drawRoundedRect(ctx, 232, 298, 156, 14, 7, '#64748B', '#1E293B', 2);
-
-    drawRoundedRect(ctx, 116, 42, 388, 224, 12, '#0F172A', '#334155', 3);
-    drawRoundedRect(ctx, 130, 56, 360, 192, 6, '#0284C7', '#38BDF8', 1.5);
-
-    // Các cửa sổ & biểu tượng phần mềm trên màn hình Desktop
-    drawRoundedRect(ctx, 146, 72, 62, 54, 10, '#FFFFFF', '#BAE6FD', 1.5);
-    drawRoundedRect(ctx, 158, 84, 38, 30, 4, '#2563EB');
-
-    drawRoundedRect(ctx, 146, 138, 62, 54, 10, '#FFFFFF', '#BAE6FD', 1.5);
-    ctx.beginPath();
-    ctx.arc(177, 165, 16, 0, Math.PI * 2);
-    ctx.fillStyle = '#F59E0B';
-    ctx.fill();
-
-    // Cửa sổ phần mềm đang mở trên màn hình
-    drawRoundedRect(ctx, 226, 72, 246, 152, 8, '#FFFFFF', '#E2E8F0', 2);
-    drawRoundedRect(ctx, 226, 72, 246, 24, 6, '#1E293B');
-    ['#EF4444', '#F59E0B', '#22C55E'].forEach((col, i) => {
-        ctx.beginPath();
-        ctx.arc(242 + i * 14, 84, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = col;
-        ctx.fill();
-    });
-    drawRoundedRect(ctx, 244, 110, 140, 12, 4, '#3B82F6');
-    drawRoundedRect(ctx, 244, 130, 208, 8, 4, '#94A3B8');
-    drawRoundedRect(ctx, 244, 146, 186, 8, 4, '#94A3B8');
-    drawRoundedRect(ctx, 244, 168, 92, 42, 6, '#DCFCE7', '#22C55E', 1.5);
-    drawRoundedRect(ctx, 348, 168, 104, 42, 6, '#FEF3C7', '#F59E0B', 1.5);
-
-    // Thanh Taskbar dưới đáy màn hình
-    drawRoundedRect(ctx, 130, 232, 360, 16, 2, '#0F172A');
-
-    // 3. Loa máy tính bên trái
-    drawRoundedRect(ctx, 42, 186, 56, 122, 10, '#1E293B', '#475569', 2.5);
-    ctx.beginPath();
-    ctx.arc(70, 222, 12, 0, Math.PI * 2);
-    ctx.fillStyle = '#38BDF8';
+    ctx.arc(178, 128, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#CBD5E1';
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(70, 268, 18, 0, Math.PI * 2);
-    ctx.fillStyle = '#0284C7';
+    ctx.arc(178, 154, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#E2E8F0';
+    ctx.fill();
+    // Loa phải
+    drawRoundedRect(ctx, 514, 106, 44, 72, 6, '#1E293B', '#0F172A', 2);
+    ctx.beginPath();
+    ctx.arc(536, 128, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#CBD5E1';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(536, 154, 12, 0, Math.PI * 2);
+    ctx.fillStyle = '#E2E8F0';
     ctx.fill();
 
-    // 4. Bàn phím & Chuột đặt phía trước trên mặt bàn gỗ
-    drawRoundedRect(ctx, 148, 324, 296, 66, 8, '#F8FAFC', '#334155', 2.5);
-    for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 11; c++) {
-            drawRoundedRect(ctx, 162 + c * 24.5, 334 + r * 17, 20, 12, 3, '#CBD5E1', '#64748B', 1);
+    // 3. Thùng máy (Case) bên phải có quạt LED RGB
+    drawRoundedRect(ctx, 578, 22, 148, 184, 8, '#1E293B', '#0F172A', 3);
+    drawRoundedRect(ctx, 586, 32, 88, 164, 5, '#0F172A', '#475569', 1.5);
+    // Quạt LED RGB bên trong Case
+    const rgbGrad = ctx.createRadialGradient(618, 74, 4, 618, 74, 24);
+    rgbGrad.addColorStop(0, '#FFFFFF');
+    rgbGrad.addColorStop(0.5, '#38BDF8');
+    rgbGrad.addColorStop(1, '#EC4899');
+    ctx.beginPath();
+    ctx.arc(618, 74, 22, 0, Math.PI * 2);
+    ctx.fillStyle = rgbGrad;
+    ctx.fill();
+    drawRoundedRect(ctx, 682, 34, 36, 160, 4, '#0F172A', '#334155', 1.5);
+
+    // 4. Bàn phím LED & Chuột ở hàng giữa mặt bàn
+    drawRoundedRect(ctx, 262, 198, 198, 56, 6, '#1E293B', '#0F172A', 2.5);
+    const keyColors = ['#EF4444', '#F59E0B', '#22C55E', '#38BDF8', '#A855F7'];
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 13; c++) {
+            drawRoundedRect(
+                ctx,
+                270 + c * 14.2,
+                205 + r * 11.5,
+                11,
+                8.5,
+                2,
+                '#334155',
+                keyColors[(r + c) % keyColors.length],
+                0.9
+            );
         }
     }
+    // Chuột máy tính
+    drawRoundedRect(ctx, 488, 208, 34, 52, 16, '#1E293B', '#0F172A', 2);
+    drawRoundedRect(ctx, 503, 214, 4, 12, 2, '#64748B');
 
-    drawRoundedRect(ctx, 474, 330, 48, 58, 24, '#F8FAFC', '#334155', 2.5);
-    drawRoundedRect(ctx, 495, 336, 6, 16, 3, '#0284C7');
+    // 5. Bo mạch chủ (Mainboard) góc dưới bên trái
+    drawRoundedRect(ctx, 56, 226, 134, 144, 6, '#1E293B', '#475569', 2);
+    drawRoundedRect(ctx, 66, 234, 46, 24, 3, '#64748B');
+    // Socket CPU trên mainboard
+    drawRoundedRect(ctx, 114, 254, 34, 34, 3, '#CBD5E1', '#475569', 1.5);
+    // Khe cắm RAM & PCIe
+    for (let i = 0; i < 4; i++) {
+        drawRoundedRect(ctx, 156 + i * 6, 242, 3.5, 52, 1, '#334155');
+    }
+    drawRoundedRect(ctx, 76, 304, 78, 8, 2, '#94A3B8');
+    drawRoundedRect(ctx, 76, 322, 78, 8, 2, '#94A3B8');
+    drawRoundedRect(ctx, 136, 336, 42, 24, 3, '#64748B');
+
+    // 6. Bộ vi xử lý (CPU)
+    drawRoundedRect(ctx, 208, 244, 28, 28, 4, '#CBD5E1', '#0F766E', 2);
+    drawRoundedRect(ctx, 213, 249, 18, 18, 2, '#E2E8F0', '#64748B', 1);
+
+    // 7. Bộ nhớ RAM (2 thanh RAM)
+    drawRoundedRect(ctx, 202, 298, 16, 68, 2, '#1E293B', '#CA8A04', 1.5);
+    drawRoundedRect(ctx, 226, 298, 16, 68, 2, '#1E293B', '#CA8A04', 1.5);
+
+    // 8. Card đồ họa (VGA - 2 quạt tản nhiệt)
+    drawRoundedRect(ctx, 284, 296, 136, 68, 8, '#1E293B', '#475569', 2);
+    [324, 382].forEach(fx => {
+        ctx.beginPath();
+        ctx.arc(fx, 330, 24, 0, Math.PI * 2);
+        ctx.fillStyle = '#0F172A';
+        ctx.fill();
+        ctx.strokeStyle = '#64748B';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(fx, 330, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#475569';
+        ctx.fill();
+    });
+
+    // 9. Ổ cứng (SSD & HDD)
+    drawRoundedRect(ctx, 452, 306, 42, 56, 4, '#334155', '#1E293B', 1.8);
+    drawRoundedRect(ctx, 462, 322, 22, 16, 2, '#94A3B8');
+    drawRoundedRect(ctx, 502, 298, 52, 66, 4, '#E2E8F0', '#64748B', 1.8);
+    drawRoundedRect(ctx, 510, 308, 36, 42, 2, '#FFFFFF', '#22C55E', 1.2);
+
+    // 10. Nguồn máy tính (PSU) kèm bó dây nguồn
+    drawRoundedRect(ctx, 584, 286, 108, 82, 6, '#1E293B', '#0F172A', 2.5);
+    ctx.beginPath();
+    ctx.arc(632, 327, 28, 0, Math.PI * 2);
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Bó dây nguồn bọc lưới đen-vàng-đỏ bên phải PSU
+    drawRoundedRect(ctx, 694, 292, 34, 74, 14, '#0F172A', '#F59E0B', 2);
+
+    // Các nhãn tên bộ phận tiếng Việt chuẩn xác như hình mẫu
+    drawPartLabelTag('Màn hình', 96, 62, 212, 48);
+    drawPartLabelTag('Loa', 536, 74, 536, 106);
+    drawPartLabelTag('Thùng máy (Case)', 664, 22);
+    drawPartLabelTag('Bàn phím', 360, 176);
+    drawPartLabelTag('Chuột', 505, 276);
+    drawPartLabelTag('Bo mạch chủ\n(Mainboard)', 98, 194, 118, 226);
+    drawPartLabelTag('Bộ vi xử lý\n(CPU)', 222, 210, 222, 244);
+    drawPartLabelTag('Bộ nhớ\nRAM', 220, 390);
+    drawPartLabelTag('Card đồ họa\n(VGA)', 352, 390);
+    drawPartLabelTag('Ổ cứng\n(SSD/HDD)', 498, 390);
+    drawPartLabelTag('Nguồn (PSU)', 656, 256, 638, 286);
 };
 
 /**
@@ -2175,15 +2312,30 @@ export const renderPedagogicalIllustrationDataUrl = (
 ): string => {
     const cleanDesc = extractCleanImageDescription(rawLine);
     const cleanContext = (precedingContext || '').trim();
-    const descKey = `desc__${normalizeImageDescKey(cleanDesc)}`;
-    const cacheKey = `${lessonTitle}__${cleanContext}__${cleanDesc}`;
+    const contextLines = cleanContext.split('\n').map(l => l.trim()).filter(Boolean);
+    const immediateContextLine = (contextLines.length > 0 ? contextLines[contextLines.length - 1] : cleanContext)
+        .replace(/\*\*/g, '')
+        .replace(/^[-–\*\s]+/, '')
+        .trim();
 
-    // Ưu tiên 1: Lấy hình ảnh AI thực tế đã được tạo trong `pregenerateLessonImagesWithAI`
-    if (imageDataUrlCache.has(descKey)) {
-        return imageDataUrlCache.get(descKey)!;
+    const descKey = `desc__${normalizeImageDescKey(cleanDesc)}`;
+    const ctxKey = `ctx__${normalizeImageDescKey(`${immediateContextLine} ${cleanDesc}`)}`;
+    const cacheKey = `${lessonTitle}__${immediateContextLine}__${cleanDesc}`;
+
+    // Ưu tiên tuyệt đối: Lấy hình ảnh chụp trực quan do AI tạo ra từ `aiGeneratedImageCache`
+    if (aiGeneratedImageCache.has(ctxKey)) {
+        return aiGeneratedImageCache.get(ctxKey)!;
     }
-    if (imageDataUrlCache.has(cacheKey)) {
-        return imageDataUrlCache.get(cacheKey)!;
+    if (aiGeneratedImageCache.has(descKey)) {
+        return aiGeneratedImageCache.get(descKey)!;
+    }
+    if (aiGeneratedImageCache.has(cacheKey)) {
+        return aiGeneratedImageCache.get(cacheKey)!;
+    }
+
+    // Nếu chưa có ảnh AI, kiểm tra bộ nhớ đệm Canvas dự phòng
+    if (canvasFallbackCache.has(cacheKey)) {
+        return canvasFallbackCache.get(cacheKey)!;
     }
 
     if (typeof document === 'undefined') {
@@ -2195,10 +2347,6 @@ export const renderPedagogicalIllustrationDataUrl = (
     canvas.height = 420;
     const ctx = canvas.getContext('2d');
     if (!ctx) return '';
-
-    // Chỉ lấy câu văn ngay phía trên (không lấy toàn bộ lịch sử dài) để tránh bị nhiễu từ khóa của câu khác
-    const contextLines = cleanContext.split('\n').map(l => l.trim()).filter(Boolean);
-    const immediateContextLine = contextLines.length > 0 ? contextLines[contextLines.length - 1] : cleanContext;
 
     const coreDescObject = extractCoreVisualObjectText(cleanDesc);
     const coreContextObject = extractCoreVisualObjectText(immediateContextLine);
@@ -2278,7 +2426,7 @@ export const renderPedagogicalIllustrationDataUrl = (
         subjectLower.includes('trồng cây') ||
         subjectLower.includes('trồng hoa');
 
-    // 6. NHẬN DIỆN CÁC DẠNG THÔNG TIN TRÊN TRANG WEB (CHỈ KHI CÂU VĂN NÓI RÕ VỀ VĂN BẢN, HÌNH ẢNH, ÂM THANH, VIDEO TRÊN TRANG WEB)
+    // 6. NHẬN DIỆN CÁC DẠNG THÔNG TIN TRÊN TRANG WEB
     const infoTypeCount = [
         subjectLower.includes('chữ viết') || subjectLower.includes('văn bản'),
         subjectLower.includes('hình ảnh'),
@@ -2390,8 +2538,9 @@ export const renderPedagogicalIllustrationDataUrl = (
         drawScratchProgrammingScene(ctx);
     } else if (
         subjectLower.includes('phần cứng') ||
-        subjectLower.includes('phần mềm') ||
+        subjectLower.includes('bộ phận của máy tính') ||
         subjectLower.includes('bộ phận chính của máy tính') ||
+        subjectLower.includes('linh kiện máy tính') ||
         subjectLower.includes('máy tính để bàn')
     ) {
         drawHardwareSoftwareOverviewScene(ctx);
@@ -2411,17 +2560,70 @@ export const renderPedagogicalIllustrationDataUrl = (
     }
 
     const dataUrl = canvas.toDataURL('image/png');
-    imageDataUrlCache.set(cacheKey, dataUrl);
+    canvasFallbackCache.set(cacheKey, dataUrl);
     return dataUrl;
 };
 
 /**
- * Tự động gọi AI tạo hình ảnh trực quan thực tế (giống hệt phong cách ảnh trực quan môn Công nghệ lớp 4)
- * bám sát 100% câu văn ngay phía trên và lưu vào bộ nhớ đệm `imageDataUrlCache` (theo cả `descKey` và `cacheKey`)
+ * Chuẩn hóa mọi định dạng ảnh AI (JPEG / WebP / PNG) về chuẩn PNG 16:9 sắc nét
+ * để cả trình duyệt và Microsoft Word (.docx ImageRun) đều hiển thị 100% không lỗi.
+ */
+const normalizeAiImageToPngDataUrl = (base64Data: string, mimeType: string): Promise<string> => {
+    const rawDataUrl = `data:${mimeType || 'image/png'};base64,${base64Data}`;
+    if (typeof document === 'undefined' || typeof Image === 'undefined') {
+        return Promise.resolve(rawDataUrl);
+    }
+    return new Promise(resolve => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                const targetW = 800;
+                const targetH = Math.round(((img.height || 450) / (img.width || 800)) * targetW) || 450;
+                canvas.width = targetW;
+                canvas.height = targetH;
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, targetW, targetH);
+                    ctx.drawImage(img, 0, 0, targetW, targetH);
+                    resolve(canvas.toDataURL('image/png'));
+                    return;
+                }
+            } catch {
+                // fallback
+            }
+            resolve(rawDataUrl);
+        };
+        img.onerror = () => resolve(rawDataUrl);
+        img.src = rawDataUrl;
+    });
+};
+
+const buildAiImagePromptForLessonContext = (
+    cleanDesc: string,
+    immediatePrecedingLine: string,
+    lessonTitle: string
+): string => {
+    const coreDesc = extractCoreVisualObjectText(cleanDesc);
+    const coreImmediate = extractCoreVisualObjectText(immediatePrecedingLine);
+
+    return `Tạo một bức ảnh chụp thực tế chuẩn sư phạm (photorealistic studio educational photograph, tỷ lệ ngang 16:9) sắc nét, chân thực, đặt trên mặt bàn gỗ sáng màu, minh họa CHÍNH XÁC 100% đối tượng/vật thể/học cụ/màn hình giao diện của bài học "${lessonTitle}":
+- Nội dung câu lệnh của giáo viên ngay phía trên: "${immediatePrecedingLine || coreImmediate || coreDesc}"
+- Mô tả chi tiết hình ảnh cần tạo: "${coreDesc}"
+
+NGUYÊN TẮC BẮT BUỘC TUYỆT ĐỐI:
+1. Hình ảnh phải thể hiện trực tiếp VẬT THẬT / HỌC CỤ THẬT / CÁC BỘ PHẬN LINH KIỆN THẬT / MÔ HÌNH THẬT hoặc MÀN HÌNH MÁY TÍNH HIỂN THỊ ĐÚNG GIAO DIỆN vừa được nhắc đến ở câu văn ngay phía trên, đặt trên mặt bàn gỗ sáng màu với ánh sáng studio rõ nét.
+2. Nếu câu văn yêu cầu quan sát các bộ phận cấu tạo hoặc phân loại nhiều vật mẫu (ví dụ: các bộ phận của máy tính, các bộ phận của rô-bốt, các loại chậu trồng cây, các loại giá thể, bộ lắp ghép kỹ thuật...), hãy bày trí đầy đủ các vật thật/bộ phận thật ngay ngắn trên mặt bàn gỗ và gắn nhãn tên tiếng Việt ngắn gọn, rõ ràng chỉ trực tiếp vào từng bộ phận/vật thật đó.
+3. Nếu câu văn yêu cầu quan sát trang web, cửa sổ ChatGPT, công cụ tìm kiếm hoặc phần mềm trên máy tính, hãy chụp cận cảnh màn hình máy tính đặt trên bàn gỗ đang hiển thị trực quan đúng giao diện đó.
+4. NGHIÊM CẤM TUYỆT ĐỐI: KHÔNG vẽ sơ đồ tư duy (mindmap), KHÔNG vẽ đồ họa thông tin chia ô chữ (infographic), KHÔNG vẽ lưu đồ khối, KHÔNG vẽ phiếu học tập, KHÔNG vẽ cảnh lớp học chung chung.`;
+};
+
+/**
+ * Tự động gọi AI tạo hình ảnh trực quan thực tế (photorealistic tabletop object / interface illustration)
+ * bám sát 100% câu văn ngay phía trên và lưu vào `aiGeneratedImageCache`
  * để hiển thị đồng nhất trên giao diện Xem trước và khi xuất file Word (.docx).
- * Hỗ trợ linh hoạt cả 2 kiểu truyền tham số:
- * - (plan, apiKey, lessonTitleFallback)
- * - (plan, subject, grade, apiKey)
  */
 export const pregenerateLessonImagesWithAI = async (
     plan: LessonPlanResponse,
@@ -2431,7 +2633,6 @@ export const pregenerateLessonImagesWithAI = async (
 ): Promise<void> => {
     if (!plan || !Array.isArray(plan.periods)) return;
 
-    // Xác định chính xác apiKey dù được truyền ở vị trí arg2 hay arg4
     const looksLikeApiKey = (val?: string) =>
         Boolean(val && /^AIza[0-9A-Za-z_-]{20,}$/.test(val.trim()));
 
@@ -2459,8 +2660,8 @@ export const pregenerateLessonImagesWithAI = async (
 
     const lessonTitleFallback = arg4 !== undefined ? `${arg2} ${arg3}`.trim() : arg3;
 
-    const tasks: Array<{ descKey: string; cacheKey: string; prompt: string }> = [];
-    const seenDescKeys = new Set<string>();
+    const tasks: Array<{ descKey: string; ctxKey: string; cacheKey: string; prompt: string }> = [];
+    const seenKeys = new Set<string>();
 
     for (const period of plan.periods) {
         const lessonTitle = plan.lesson_full_title || lessonTitleFallback || '';
@@ -2476,16 +2677,16 @@ export const pregenerateLessonImagesWithAI = async (
                     if (isImageHintLine(line)) {
                         const cleanDesc = extractCleanImageDescription(line);
                         const descKey = `desc__${normalizeImageDescKey(cleanDesc)}`;
+                        const ctxKey = `ctx__${normalizeImageDescKey(`${immediatePrecedingLine} ${cleanDesc}`)}`;
                         const cacheKey = `${lessonTitle}__${immediatePrecedingLine}__${cleanDesc}`;
 
-                        if (!seenDescKeys.has(descKey) && !imageDataUrlCache.has(descKey)) {
-                            seenDescKeys.add(descKey);
-                            const coreDesc = extractCoreVisualObjectText(cleanDesc);
-                            const coreImmediate = extractCoreVisualObjectText(immediatePrecedingLine);
+                        if (!seenKeys.has(ctxKey) && !aiGeneratedImageCache.has(ctxKey) && !aiGeneratedImageCache.has(descKey)) {
+                            seenKeys.add(ctxKey);
                             tasks.push({
                                 descKey,
+                                ctxKey,
                                 cacheKey,
-                                prompt: `Generate a realistic, high-clarity 3D visual object illustration for a primary school textbook showing ONLY the physical object, tool, kit, or clean computer monitor screen described here: "${coreDesc}" (from context: "${coreImmediate}"). Place the object or computer monitor on a clean wooden tabletop with studio lighting, just like primary school Technology (Công nghệ lớp 4) textbook photos. ABSOLUTELY FORBIDDEN: NO text, NO words, NO labels, NO numbers, NO infographic, NO mindmap, NO diagram, NO chart, NO arrows, NO callout boxes, NO classroom scenes.`
+                                prompt: buildAiImagePromptForLessonContext(cleanDesc, immediatePrecedingLine, lessonTitle)
                             });
                         }
                     } else if (!/^[-–\*\s]*(\[?\s*Tích\s*hợp\b)/i.test(line)) {
@@ -2499,30 +2700,47 @@ export const pregenerateLessonImagesWithAI = async (
     if (tasks.length === 0) return;
 
     const ai = new GoogleGenAI({ apiKey: resolvedApiKey });
-    const imageModels = [
+    const baseImageModels = [
+        'gemini-3.1-flash-lite-image',
         'gemini-2.5-flash-image',
-        'gemini-3.1-flash-image-preview'
+        'gemini-nano-banana-2.1',
+        'gemini-3.1-flash-image-preview',
+        'gemini-3-pro-image'
     ];
+    const imageModels = preferredImageModel
+        ? [preferredImageModel, ...baseImageModels.filter(m => m !== preferredImageModel)]
+        : baseImageModels;
 
     await Promise.all(
-        tasks.slice(0, 8).map(async task => {
+        tasks.slice(0, 6).map(async (task, taskIdx) => {
+            if (taskIdx > 0) {
+                await new Promise(r => setTimeout(r, taskIdx * 250));
+            }
             for (const modelName of imageModels) {
                 try {
                     const res = await Promise.race([
                         ai.models.generateContent({
                             model: modelName,
-                            contents: task.prompt
+                            contents: {
+                                parts: [{ text: task.prompt }]
+                            }
                         }),
-                        new Promise<null>(resolve => setTimeout(() => resolve(null), 16000))
+                        new Promise<null>(resolve => setTimeout(() => resolve(null), 20000))
                     ]);
                     if (!res) continue;
                     const parts = (res as any)?.candidates?.[0]?.content?.parts || [];
                     let foundImage = false;
                     for (const part of parts) {
                         if (part?.inlineData?.data && part?.inlineData?.mimeType?.startsWith('image/')) {
-                            const dataUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                            imageDataUrlCache.set(task.descKey, dataUrl);
-                            imageDataUrlCache.set(task.cacheKey, dataUrl);
+                            preferredImageModel = modelName;
+                            const pngDataUrl = await normalizeAiImageToPngDataUrl(
+                                part.inlineData.data,
+                                part.inlineData.mimeType
+                            );
+                            aiGeneratedImageCache.set(task.ctxKey, pngDataUrl);
+                            aiGeneratedImageCache.set(task.descKey, pngDataUrl);
+                            aiGeneratedImageCache.set(task.cacheKey, pngDataUrl);
+                            notifyImageListeners();
                             foundImage = true;
                             break;
                         }

@@ -308,7 +308,7 @@ const LessonPreview: React.FC<Props> = ({ result: rawResult, inputData, id }) =>
                                                         {displayTeacher}
                                                     </span>
                                                 </div>
-                                                <br clear="all" style={{ pageBreakBefore: 'always' }} />
+                                                <br style={{ clear: 'both', pageBreakBefore: 'always' }} />
                                             </>
                                         )}
                                     </React.Fragment>

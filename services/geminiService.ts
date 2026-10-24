@@ -284,11 +284,11 @@ export const generateLessonPlan = async ({
             - 3. Hoạt động luyện tập, thực hành >= 10 gạch đầu dòng.
             - 4. Hoạt động vận dụng, trải nghiệm >= 4 gạch đầu dòng.
             - BẮT BUỘC NGUYÊN TẮC 1:1 NGANG HÀNG: Cột "Hoạt động của Giáo viên" có bao nhiêu gạch đầu dòng thì cột "Hoạt động của Học sinh" BẮT BUỘC có đúng bấy nhiêu gạch đầu dòng đáp lại tương ứng (Tỷ lệ 1:1 tuyệt đối).
-        4. **HÌNH ẢNH TRỰC QUAN BÁM SÁT NỘI DUNG CÂU VĂN NGAY PHÍA TRÊN & KÊNH HÌNH SGK:**
-            - Tối thiểu 3 hình/tiết, CHỈ CÓ Ở CỘT GIÁO VIÊN, không dùng gạch đầu dòng.
-            - NGUYÊN TẮC BẤT DI BẤT DỊCH: Hình ảnh phải trực quan hóa chính xác VẬT THỂ, DỤNG CỤ, HỌC CỤ, MÔ HÌNH hoặc MÀN HÌNH GIAO DIỆN cụ thể được nhắc đến ở câu văn ngay phía trên nó và trong bài học SGK.
+        4. **HÌNH ẢNH TRỰC QUAN BÁM SÁT NỘI DUNG CÂU VĂN NGAY PHÍA TRÊN & KÊNH HÌNH SGK (BẮT BUỘC TỪ 3 ĐẾN 4 HÌNH / TIẾT):**
+            - BẮT BUỘC có đúng **từ 3 đến 4 hình ảnh minh họa trực quan** trong tiết học này (phân bổ vào Hoạt động 1: 1 hình, Hoạt động 2: 1-2 hình, Hoạt động 3: 1 hình), CHỈ CÓ Ở CỘT GIÁO VIÊN, không dùng gạch đầu dòng trước thẻ hình ảnh.
+            - NGUYÊN TẮC BẤT DI BẤT DỊCH: Hình ảnh phải trực quan hóa chính xác VẬT THỂ, CÁC BỘ PHẬN CẤU TẠO, DỤNG CỤ, HỌC CỤ, MÔ HÌNH hoặc MÀN HÌNH GIAO DIỆN cụ thể được nhắc đến ở câu văn ngay phía trên nó và trong bài học "${baseLessonName}" của SGK. Mỗi bài học và mỗi phần có nội dung khác nhau nên hình ảnh phải mô tả riêng biệt, khớp 100% với câu văn ngay phía trên.
             - TUYỆT ĐỐI KHÔNG mô tả theo kiểu sơ đồ tư duy (mindmap), đồ họa thông tin (infographic), sơ đồ khối chữ, phiếu học tập hay cảnh lớp học chung chung!
-            - Cú pháp: \`[Gợi ý hình ảnh: Mô tả trực quan, chân thực, rõ nét hình dáng của chính vật thể, dụng cụ, học cụ hoặc màn hình giao diện vừa nêu ở câu văn ngay phía trên]\`.
+            - Cú pháp: \`[Gợi ý hình ảnh: Mô tả trực quan, chân thực, rõ nét hình dáng và các thành phần của chính vật thể, dụng cụ, học cụ hoặc màn hình giao diện vừa nêu ở câu văn ngay phía trên]\`.
         5. **THỜI GIAN LINH HOẠT VÀ CHÍNH XÁC:**
             - Phân bổ thời gian linh hoạt, bám sát nội dung thực tế của 4 hoạt động (ví dụ đối với tiết ${totalDuration} phút: Mở đầu 4-5 phút, KT mới 12-15 phút, Luyện tập 11-14 phút, Vận dụng 4-5 phút).
             - BẮT BUỘC: Tổng số phút của cả 4 hoạt động cộng lại PHẢI BẰNG ĐÚNG CHÍNH XÁC ${totalDuration} phút.

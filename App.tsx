@@ -77,11 +77,6 @@ const App: React.FC = () => {
     const [parsingPpct, setParsingPpct] = useState<boolean>(false);
     const [ppctError, setPpctError] = useState<string>('');
 
-    // Quick manual week input states
-    const [quickWeekNum, setQuickWeekNum] = useState<string>('1');
-    const [quickLessonName, setQuickLessonName] = useState<string>('');
-    const [quickNotes, setQuickNotes] = useState<string>('');
-
     // Shared upload cache across batch calls to avoid re-uploading large PDF files every week
     const uploadedFileCacheRef = useRef<Map<string, { uri: string; mimeType: string; name: string }>>(new Map());
 
@@ -124,7 +119,6 @@ const App: React.FC = () => {
         updateWeekPlansState(enriched);
         if (enriched.length > 0) {
             setSelectedWeekIndex(0);
-            setQuickWeekNum(String(enriched.length + 1));
             setInputData(prev => ({
                 ...prev,
                 week: enriched[0].week.replace(/Tuần\s*/gi, '').trim() || '1',
@@ -137,61 +131,6 @@ const App: React.FC = () => {
                 pedagogicalNote: enriched[0].pedagogicalNote
             }));
         }
-    };
-
-    const handleAddQuickWeek = () => {
-        const trimmedLesson = quickLessonName.trim();
-        if (!trimmedLesson) {
-            setPpctError('Vui lòng nhập tên bài dạy để thêm tuần vào bảng Phân phối chương trình.');
-            return;
-        }
-        setPpctError('');
-        setError('');
-        const formattedWeek = /^tuần/i.test(quickWeekNum.trim())
-            ? quickWeekNum.trim()
-            : `Tuần ${quickWeekNum.trim() || (ppctLessons.length + 1)}`;
-
-        const newLesson: PpctLesson = {
-            week: formattedWeek,
-            lessonName: trimmedLesson,
-            periods: 1,
-            notes: quickNotes.trim()
-        };
-        const nextLessons = [...ppctLessons, newLesson];
-        setPpctLessons(nextLessons);
-        const enriched = enrichWeekPlansWithPedagogy(nextLessons).map((item, idx) => {
-            const existing = weekPlansRef.current[idx];
-            if (existing && existing.lessonName === item.lessonName && existing.week === item.week) {
-                return {
-                    ...item,
-                    status: existing.status,
-                    result: existing.result,
-                    error: existing.error
-                };
-            }
-            return item;
-        });
-        updateWeekPlansState(enriched);
-        const newIdx = enriched.length - 1;
-        setSelectedWeekIndex(newIdx);
-        const target = enriched[newIdx];
-        if (target) {
-            setInputData(prev => ({
-                ...prev,
-                week: target.week.replace(/Tuần\s*/gi, '').trim() || String(newIdx + 1),
-                lessonName: target.lessonName,
-                periods: '1',
-                integrationNotes: target.notes || '',
-                periodIndexInLesson: target.periodIndexInLesson,
-                totalPeriodsInLesson: target.totalPeriodsInLesson,
-                baseLessonName: target.baseLessonName,
-                pedagogicalNote: target.pedagogicalNote
-            }));
-        }
-        const nextWeekNumber = (parseInt(quickWeekNum.replace(/\D+/g, ''), 10) || enriched.length) + 1;
-        setQuickWeekNum(String(nextWeekNumber));
-        setQuickLessonName('');
-        setQuickNotes('');
     };
 
     // --- Handlers ---
@@ -336,7 +275,7 @@ const App: React.FC = () => {
             return false;
         }
         if (weekPlansRef.current.length === 0) {
-            setError('Vui lòng tải lên file Phân phối chương trình (hoặc thêm nhanh tuần học) để có danh sách bài dạy trước khi soạn.');
+            setError('Vui lòng tải lên file Phân phối chương trình để có danh sách bài dạy trước khi soạn.');
             return false;
         }
         // Tự động đồng bộ nguồn SGK nếu người dùng đã tải PDF hoặc Ảnh lên ở tab bên kia
@@ -510,6 +449,7 @@ const App: React.FC = () => {
                 item.result,
                 {
                     ...inputData,
+                    apiKey: getEffectiveApiKey(),
                     week: item.week,
                     lessonName: item.lessonName,
                     baseLessonName: item.baseLessonName,
@@ -536,10 +476,12 @@ const App: React.FC = () => {
 
         try {
             const zip = new JSZip();
+            const effectiveKey = getEffectiveApiKey();
             for (const item of completedPlans) {
                 if (item.result) {
                     const docxBlob = await generateLessonPlanDocxBlob(item.result, {
                         ...inputData,
+                        apiKey: effectiveKey,
                         week: item.week,
                         lessonName: item.lessonName,
                         baseLessonName: item.baseLessonName,
@@ -769,70 +711,6 @@ const App: React.FC = () => {
                                             <RefreshCw size={12} /> Phân tích lại file PPCT
                                         </button>
                                     )}
-                                </div>
-
-                                {/* Thêm nhanh tuần học / bài dạy thủ công */}
-                                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                                    <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
-                                        <span>Hoặc thêm nhanh tuần / bài dạy vào danh sách:</span>
-                                        {weekPlans.length > 0 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setPpctLessons([]);
-                                                    updateWeekPlansState([]);
-                                                    setPpctPdfFile(null);
-                                                }}
-                                                className="text-[10px] text-red-600 hover:underline flex items-center gap-0.5 cursor-pointer"
-                                            >
-                                                <Trash2 size={11} /> Xóa danh sách
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="grid grid-cols-12 gap-1.5">
-                                        <input
-                                            type="text"
-                                            placeholder="Tuần (VD: 1)"
-                                            value={quickWeekNum}
-                                            onChange={e => setQuickWeekNum(e.target.value)}
-                                            className="col-span-3 p-1.5 bg-white border border-slate-300 rounded text-xs outline-none focus:border-teal-500"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Tên bài dạy (VD: Bài 1: Thông tin và quyết định)"
-                                            value={quickLessonName}
-                                            onChange={e => setQuickLessonName(e.target.value)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleAddQuickWeek();
-                                                }
-                                            }}
-                                            className="col-span-9 p-1.5 bg-white border border-slate-300 rounded text-xs outline-none focus:border-teal-500"
-                                        />
-                                    </div>
-                                    <div className="flex gap-1.5">
-                                        <input
-                                            type="text"
-                                            placeholder="Ghi chú tích hợp (nếu có, VD: Tích hợp kỹ năng công dân số)"
-                                            value={quickNotes}
-                                            onChange={e => setQuickNotes(e.target.value)}
-                                            onKeyDown={e => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleAddQuickWeek();
-                                                }
-                                            }}
-                                            className="flex-1 p-1.5 bg-white border border-slate-300 rounded text-xs outline-none focus:border-teal-500"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={handleAddQuickWeek}
-                                            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-bold flex items-center gap-1 shrink-0 cursor-pointer"
-                                        >
-                                            <Plus size={13} /> Thêm tuần
-                                        </button>
-                                    </div>
                                 </div>
 
                                 {parsingPpct && (

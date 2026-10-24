@@ -23,6 +23,7 @@ import { LessonPlanResponse, Period, Activity } from './types';
 import {
     isImageHintLine,
     renderPedagogicalIllustrationDataUrl,
+    pregenerateLessonImagesWithAI,
     dataUrlToUint8Array
 } from './utils/lessonImageGenerator';
 
@@ -336,34 +337,157 @@ export const ensureFourActivitiesInAllPeriods = (
             .join('\n');
     };
 
-    const cleanedPeriods = updatedPeriods.map(p => ({
-        ...p,
-        objectives: Array.isArray(p.objectives)
-            ? p.objectives.map(o =>
-                  isChatGptLessonNotMaps
-                      ? o.replace(/,?\s*Google\s*Maps/gi, '').replace(/đánh giá địa điểm trên Google Maps/gi, 'kiểm chứng thông tin trên công cụ tìm kiếm')
-                      : o
-              )
-            : p.objectives,
-        materials: p.materials
-            ? {
-                  teacher: isChatGptLessonNotMaps
-                      ? (p.materials.teacher || '').replace(/,\s*Google\s*Maps/gi, '').replace(/Google\s*Maps\s*và\s*/gi, '')
-                      : p.materials.teacher,
-                  student: isChatGptLessonNotMaps
-                      ? (p.materials.student || '').replace(/,\s*Google\s*Maps/gi, '').replace(/Google\s*Maps\s*và\s*/gi, '')
-                      : p.materials.student
-              }
-            : p.materials,
-        activities: (p.activities || []).map(act => ({
+    const enforceThreeToFourImagesInPeriod = (period: Period): Period => {
+        const activities = (period.activities || []).map(act => ({
             ...act,
-            rows: (act.rows || []).map(r => ({
-                ...r,
-                teacher: sanitizeCrossLessonHallucination(r.teacher || '', true),
-                student: sanitizeCrossLessonHallucination(r.student || '', false)
+            rows: (act.rows || []).map(r => ({ ...r }))
+        }));
+
+        const splitLinesWithHints = (text: string): string[] =>
+            (text || '')
+                .replace(/(\[Gợi ý hình ảnh:|Gợi ý hình ảnh:|\(Gợi ý hình ảnh:|\[Hình ảnh minh họa:|Hình ảnh minh họa:)/gi, '\n$1')
+                .split('\n')
+                .map(l => l.trim())
+                .filter(Boolean);
+
+        const countPeriodImages = (): number => {
+            let count = 0;
+            for (const act of activities) {
+                for (const row of act.rows || []) {
+                    const lines = splitLinesWithHints(row.teacher || '');
+                    for (const line of lines) {
+                        if (isImageHintLine(line)) count++;
+                    }
+                }
+            }
+            return count;
+        };
+
+        const buildContextualHintFromTeacherLine = (teacherText: string, actName: string): string => {
+            const nonHintLines = splitLinesWithHints(teacherText).filter(
+                l => !isImageHintLine(l) && !isActivityIntegrationLine(l) && !l.startsWith('*')
+            );
+            const anchorLine =
+                nonHintLines.find(l =>
+                    /quan sát|trình chiếu|chiếu|hình|sơ đồ|mô hình|bộ phận|cấu tạo|màn hình|giao diện|ví dụ|tình huống|thực hành|bài tập|thao tác|bảng|phiếu/i.test(
+                        l
+                    )
+                ) ||
+                nonHintLines[0] ||
+                `Nội dung trọng tâm thuộc ${actName} của bài ${baseTitle}`;
+
+            const cleanAnchor = anchorLine
+                .replace(/^[-–\*\s]+/, '')
+                .replace(/^(Giáo\s*viên|GV)\s*[:\-\–]?\s*/i, '')
+                .replace(/[\.\:\;]+$/, '')
+                .trim();
+
+            return `[Gợi ý hình ảnh: Hình ảnh trực quan chụp thực tế hoặc giao diện chi tiết có nhãn chú thích tiếng Việt rõ ràng minh họa trực tiếp cho nội dung: ${cleanAnchor} (Bài học: ${baseTitle})]`;
+        };
+
+        // Nếu tổng số hình ảnh trong tiết < 3, tự động bổ sung vào các hoạt động ưu tiên (HĐ 2 -> HĐ 3 -> HĐ 1 -> HĐ 4)
+        let currentCount = countPeriodImages();
+        const priorityActIndices = [1, 2, 0, 3];
+
+        // Vòng 1: Bổ sung vào những hoạt động chưa có hình ảnh nào
+        for (const actIdx of priorityActIndices) {
+            if (currentCount >= 3) break;
+            const act = activities[actIdx];
+            if (!act || !act.rows || act.rows.length === 0) continue;
+
+            const actHasImage = act.rows.some(r =>
+                splitLinesWithHints(r.teacher || '').some(l => isImageHintLine(l))
+            );
+            if (!actHasImage) {
+                const targetRowIdx = act.rows.findIndex(r =>
+                    /quan sát|trình chiếu|chiếu|hình|mẫu|ví dụ|tình huống|giao nhiệm vụ|yêu cầu|hướng dẫn/i.test(
+                        r.teacher || ''
+                    )
+                );
+                const rowIdx = targetRowIdx >= 0 ? targetRowIdx : 0;
+                const targetRow = act.rows[rowIdx];
+                const hintLine = buildContextualHintFromTeacherLine(targetRow.teacher || '', act.name || '');
+                targetRow.teacher = `${(targetRow.teacher || '').trim()}\n${hintLine}`.trim();
+                currentCount++;
+            }
+        }
+
+        // Vòng 2: Nếu vẫn < 3 (ví dụ một hoạt động có nhiều bước nhưng thiếu hình), bổ sung vào dòng chưa có hình của HĐ 2 hoặc HĐ 3
+        for (const actIdx of priorityActIndices) {
+            if (currentCount >= 3) break;
+            const act = activities[actIdx];
+            if (!act || !act.rows) continue;
+
+            for (let rIdx = 0; rIdx < act.rows.length; rIdx++) {
+                if (currentCount >= 3) break;
+                const row = act.rows[rIdx];
+                const lines = splitLinesWithHints(row.teacher || '');
+                const rowHasImage = lines.some(l => isImageHintLine(l));
+                if (!rowHasImage && lines.length > 0) {
+                    const hintLine = buildContextualHintFromTeacherLine(row.teacher || '', act.name || '');
+                    row.teacher = `${(row.teacher || '').trim()}\n${hintLine}`.trim();
+                    currentCount++;
+                }
+            }
+        }
+
+        // Nếu tổng số hình ảnh trong tiết > 4, giữ lại đúng 4 hình ảnh đầu tiên để đảm bảo chuẩn 3-4 hình/tiết
+        if (currentCount > 4) {
+            let kept = 0;
+            for (const act of activities) {
+                for (const row of act.rows || []) {
+                    const lines = splitLinesWithHints(row.teacher || '');
+                    const filteredLines = lines.filter(line => {
+                        if (isImageHintLine(line)) {
+                            if (kept < 4) {
+                                kept++;
+                                return true;
+                            }
+                            return false;
+                        }
+                        return true;
+                    });
+                    row.teacher = filteredLines.join('\n');
+                }
+            }
+        }
+
+        return {
+            ...period,
+            activities
+        };
+    };
+
+    const cleanedPeriods = updatedPeriods.map(p =>
+        enforceThreeToFourImagesInPeriod({
+            ...p,
+            objectives: Array.isArray(p.objectives)
+                ? p.objectives.map(o =>
+                      isChatGptLessonNotMaps
+                          ? o.replace(/,?\s*Google\s*Maps/gi, '').replace(/đánh giá địa điểm trên Google Maps/gi, 'kiểm chứng thông tin trên công cụ tìm kiếm')
+                          : o
+                  )
+                : p.objectives,
+            materials: p.materials
+                ? {
+                      teacher: isChatGptLessonNotMaps
+                          ? (p.materials.teacher || '').replace(/,\s*Google\s*Maps/gi, '').replace(/Google\s*Maps\s*và\s*/gi, '')
+                          : p.materials.teacher,
+                      student: isChatGptLessonNotMaps
+                          ? (p.materials.student || '').replace(/,\s*Google\s*Maps/gi, '').replace(/Google\s*Maps\s*và\s*/gi, '')
+                          : p.materials.student
+                  }
+                : p.materials,
+            activities: (p.activities || []).map(act => ({
+                ...act,
+                rows: (act.rows || []).map(r => ({
+                    ...r,
+                    teacher: sanitizeCrossLessonHallucination(r.teacher || '', true),
+                    student: sanitizeCrossLessonHallucination(r.student || '', false)
+                }))
             }))
-        }))
-    }));
+        })
+    );
 
     const finalPeriodNum = cleanedPeriods[0]?.period_number || explicitPeriodFromInput || 1;
     const updatedFullTitle = formatLessonTitleWithPeriod(baseTitle, finalPeriodNum);
@@ -1045,8 +1169,8 @@ const buildCellParagraphsFromText = (
                             new ImageRun({
                                 data: imgBytes,
                                 transformation: {
-                                    width: 240,
-                                    height: 128
+                                    width: 256,
+                                    height: 144
                                 },
                                 type: "png"
                             })
@@ -1109,6 +1233,11 @@ export const generateLessonPlanDocxBlob = async (
     inputData: any
 ): Promise<Blob> => {
     const result = ensureFourActivitiesInAllPeriods(rawResult, inputData);
+    await pregenerateLessonImagesWithAI(
+        result,
+        inputData?.apiKey || '',
+        result.lesson_full_title
+    ).catch(() => {});
 
     const displayGrade = inputData?.grade || result.grade_class || '5';
     const displaySubject = inputData?.subject || result.subject || 'TIN HỌC';

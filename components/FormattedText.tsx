@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     cleanPrefix,
     isActivityIntegrationLine,
@@ -7,7 +7,8 @@ import {
 import {
     isImageHintLine,
     extractCleanImageDescription,
-    renderPedagogicalIllustrationDataUrl
+    renderPedagogicalIllustrationDataUrl,
+    subscribeToImageUpdates
 } from '../utils/lessonImageGenerator';
 
 interface Props {
@@ -23,6 +24,14 @@ const FormattedText: React.FC<Props> = ({
     precedingText = '',
     integrationPrefix = 'Tích hợp giáo dục kĩ năng công dân số'
 }) => {
+    const [, setImageTick] = useState(0);
+
+    useEffect(() => {
+        return subscribeToImageUpdates(() => {
+            setImageTick(t => t + 1);
+        });
+    }, []);
+
     if (!text) return null;
 
     const processedText = text
